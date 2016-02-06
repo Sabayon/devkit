@@ -68,14 +68,25 @@ This is the folder structure that will be automatically created:
     myproject/portage_artifacts/
     myproject/entropy_artifacts/
     myproject/local_overlay/
+    myproject/specs/
 `
 
 * myproject/portage\_artifacts/ -- will contain the portage artifacts, they will be consumed in the next steps
 * myproject/entropy\_artifacts/ -- will contain the entropy output, our Sabayon repository for the **.tbz2** packages that where in **myproject/portage_artifacts/**
 * myproject/local_overlay/ -- is the location of your personal overlay (if necessary)
+* myproject/specs -- contain custom files for uses, envs, masks, unmasks and keywords for package compilation options
 
+the `specs` folder is structured like this:
 
-# Create Sabayon repository from *.tbz2 in a clean environment
+- custom.unmask: will contain your custom unmasks
+- custom.mask: will contain your custom masks
+- custom.use: will contain your custom use flags
+- custom.env: will contain your custom env specifications
+- custom.keywords: will contain your custom keywords
+
+you can override the Architecture folder in which files are placed specifying in the *SAB_ARCH* environment variable. Default is "intel" (can be *armarch* as for now)
+
+# Create Sabayon repository from \*.tbz2 in a clean environment
 
 ## Prerequisites
 
