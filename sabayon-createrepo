@@ -2,7 +2,7 @@
 set -e
 . /sbin/sabayondevkit-functions.sh
 
-ROOT="${ROOT:-$PWD}"
+SAB_WORKSPACE="${SAB_WORKSPACE:-$PWD}"
 entropysrv=$(mktemp)
 createrepo=$(mktemp)
 REPOSITORY_NAME="${REPOSITORY_NAME:-default}"
@@ -69,10 +69,10 @@ repository=$REPOSITORY_NAME|$REPOSITORY_DESCRIPTION|file:///sabayon/artifacts
 EOF
 
 docker run --rm --entrypoint /bin/bash -e REPOSITORY=$REPOSITORY_NAME -e EDITOR=cat -e LC_ALL=en_US.UTF-8 \
-		-v "$ROOT"/entropy_artifacts:/sabayon/artifacts \
+		-v "$SAB_WORKSPACE"/entropy_artifacts:/sabayon/artifacts \
 		-v $createrepo:/sabayon/bin/create_repo.sh \
 		-v $entropysrv:/etc/entropy/server.conf \
-		-v "$ROOT"/portage_artifacts:/usr/portage/packages \
+		-v "$SAB_WORKSPACE"/portage_artifacts:/usr/portage/packages \
 		-ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
 rm -rf $createrepo
 rm -rf $entropysrv

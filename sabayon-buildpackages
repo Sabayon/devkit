@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-ROOT="${ROOT:-$PWD}"
+SAB_WORKSPACE="${SAB_WORKSPACE:-$PWD}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 . /sbin/sabayondevkit-functions.sh
 
@@ -12,4 +12,4 @@ fi
 
 check_docker_requirements
 
-docker run --rm -v "$ROOT"/local_overlay:/usr/local/portage -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@
+docker run --rm -v "$SAB_WORKSPACE"/local_overlay:/usr/local/portage -v "$SAB_WORKSPACE"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@
