@@ -1,0 +1,77 @@
+#!/bin/bash
+set -e
+ROOT="${ROOT:-$PWD}"
+entropysrv=$(mktemp)
+createrepo=$(mktemp)
+REPOSITORY_NAME="${REPOSITORY_NAME:-default}"
+REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
+EDITOR=cat
+
+if [ "$(id -u)" != "0" ]; then
+  echo "!! If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker) !!"
+fi
+
+echo "Repository: $REPOSITORY_NAME"
+echo "Repository Description: $REPOSITORY_DESCRIPTION"
+
+
+# Creating the building script on-the-fly
+cat >$createrepo <<EOF
+#!/bin/bash
+set -e
+built_pkgs=\$(find /usr/portage/packages -name "*.tbz2" | xargs)
+repo="\${REPOSITORY:-default}"
+
+equo i entropy-server
+mkdir -p /sabayon/artifacts
+
+[[ -z "\${built_pkgs}" ]] && echo "ouch no pkgs found" && exit 2
+
+if [ -d "/sabayon/artifacts/standard" ]; then
+  eit unlock \$repo || true
+  eit pull --quick $repo || true
+  #eit sync \$repo
+else
+  echo "Yes" | eit init --quick \$repo
+fi
+
+echo "Yes" | eit inject \${built_pkgs} || { echo "ouch unable to inject" && exit 3; }
+echo "Yes Yes Yes" | eit commit --quick
+eit push --quick --force
+
+EOF
+chmod +x $createrepo
+
+# Creating the entropy repository configuration on-the-fly
+cat >$entropysrv <<EOF
+# expiration-days = <internal value>
+community-mode = enable
+weak-package-files = disable
+database-format = bz2
+# sync-speed-limit =
+# server-basic-languages = en_US C
+# disabled-eapis = 1,2
+# expiration-based-scope = disable
+# nonfree-packages-directory-support = disable
+rss-feed = disable
+changelog = disable
+rss-name = packages.rss
+rss-base-url = http://packages.sabayon.org/?quicksearch=
+rss-website-url = http://www.sabayon.org/
+max-rss-entries = 10000
+# max-rss-light-entries = 100
+rss-light-name = updates.rss
+managing-editor =
+broken-reverse-deps = disable
+default-repository = $REPOSITORY_NAME
+repository=$REPOSITORY_NAME|$REPOSITORY_DESCRIPTION|file:///sabayon/artifacts
+EOF
+
+docker run --rm --entrypoint /bin/bash -e REPOSITORY=$REPOSITORY_NAME -e EDITOR=cat -e LC_ALL=en_US.UTF-8 \
+		-v "$ROOT"/entropy_artifacts:/sabayon/artifacts \
+		-v $createrepo:/sabayon/bin/create_repo.sh \
+		-v $entropysrv:/etc/entropy/server.conf \
+		-v "$ROOT"/portage_artifacts:/usr/portage/packages \
+		-ti sabayon/builder-amd64 /sabayon/bin/create_repo.sh || true
+rm -rf $createrepo
+rm -rf $entropysrv

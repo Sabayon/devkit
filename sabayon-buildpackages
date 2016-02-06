@@ -1,0 +1,15 @@
+#!/bin/bash
+set -e
+ROOT="${ROOT:-$PWD}"
+
+if [ $# -eq 0 ]
+  then
+   echo "No arguments supplied, at least you should provide some package you wish to compile. e.g. $0 app-text/tree"
+   exit 1
+fi
+
+if [ "$(id -u)" != "0" ]; then
+  echo "!! If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker) !!"
+fi
+
+docker run --rm -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti sabayon/builder-amd64 $@
