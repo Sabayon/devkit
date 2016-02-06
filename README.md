@@ -85,3 +85,6 @@ Example:
 * REPOSITORY_NAME -- is your repository name id
 * REPOSITORY_DESCRIPTION -- is your repository description
 
+You can also put your .tbz2 file externally built inside `entropy_artifacts/` in your workspace folder (you can create it if not already present)  and run `sabayon-createrepo` to generate a repository from them.
+
+
