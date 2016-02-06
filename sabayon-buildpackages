@@ -2,6 +2,7 @@
 set -e
 SAB_WORKSPACE="${SAB_WORKSPACE:-$PWD}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
+SAB_ARCH="${SAB_ARCH:-intel}"
 . /sbin/sabayondevkit-functions.sh
 
 if [ $# -eq 0 ]
@@ -12,4 +13,19 @@ fi
 
 check_docker_requirements
 
-docker run --rm -v "$SAB_WORKSPACE"/local_overlay:/usr/local/portage -v "$SAB_WORKSPACE"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@
+[ -d "$SAB_WORKSPACE"/specs ] || mkdir "$SAB_WORKSPACE"/specs/
+[ -e "$SAB_WORKSPACE"/specs/custom.mask ] || touch "$SAB_WORKSPACE"/specs/custom.mask
+[ -e "$SAB_WORKSPACE"/specs/custom.unmask ] || touch "$SAB_WORKSPACE"/specs/custom.unmask
+[ -e "$SAB_WORKSPACE"/specs/custom.use ] || touch "$SAB_WORKSPACE"/specs/custom.use
+[ -e "$SAB_WORKSPACE"/specs/custom.env ] || touch "$SAB_WORKSPACE"/specs/custom.env
+[ -e "$SAB_WORKSPACE"/specs/custom.keywords ] || touch "$SAB_WORKSPACE"/specs/custom.keywords
+
+docker run --rm \
+	-v "$SAB_WORKSPACE"/local_overlay:/usr/local/portage \
+	-v "$SAB_WORKSPACE"/portage_artifacts:/usr/portage/packages \
+	-v "$SAB_WORKSPACE"/specs/custom.unmask:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.unmask/custom.unmask \
+	-v "$SAB_WORKSPACE"/specs/custom.mask:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.mask/custom.mask \
+	-v "$SAB_WORKSPACE"/specs/custom.use:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.use/custom.use \
+	-v "$SAB_WORKSPACE"/specs/custom.env:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.env/custom.env \
+	-v "$SAB_WORKSPACE"/specs/custom.keywords:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.keywords/custom.keywords \
+	-ti $DOCKER_IMAGE $@
