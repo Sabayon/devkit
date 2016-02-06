@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 ROOT="${ROOT:-$PWD}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 
 if [ $# -eq 0 ]
   then
@@ -12,4 +13,4 @@ if [ "$(id -u)" != "0" ]; then
   echo "!! If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker) !!"
 fi
 
-docker run --rm -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti sabayon/builder-amd64 $@
+docker run --rm -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@

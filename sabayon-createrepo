@@ -5,6 +5,7 @@ entropysrv=$(mktemp)
 createrepo=$(mktemp)
 REPOSITORY_NAME="${REPOSITORY_NAME:-default}"
 REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 EDITOR=cat
 
 if [ "$(id -u)" != "0" ]; then
@@ -72,6 +73,6 @@ docker run --rm --entrypoint /bin/bash -e REPOSITORY=$REPOSITORY_NAME -e EDITOR=
 		-v $createrepo:/sabayon/bin/create_repo.sh \
 		-v $entropysrv:/etc/entropy/server.conf \
 		-v "$ROOT"/portage_artifacts:/usr/portage/packages \
-		-ti sabayon/builder-amd64 /sabayon/bin/create_repo.sh || true
+		-ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
 rm -rf $createrepo
 rm -rf $entropysrv
