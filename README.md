@@ -10,6 +10,11 @@ sudo equo i sabayon-devkit
 
 # Building package in a clean environment
 
+## Prerequisites
+
+* docker installed in the machine (`sudo equo i docker`), and the daemon started (`sudo systemctl start docker`)
+* if you don't want to run that as root, the user where are you running the script must be in the docker group (`sudo gpasswd -a $USER docker`)
+
 Packages can be built in a clean environment with docker by running `sabayon-buildpackages`.
 
 *`sabayon-buildpackages` is just a script wrapper around the `builder` perl script which is placed inside a docker container.*
@@ -71,6 +76,11 @@ This is the folder structure that will be automatically created:
 
 
 # Create Sabayon repository from *.tbz2 in a clean environment
+
+## Prerequisites
+
+* docker installed in the machine (`sudo equo i docker`), and the daemon started (`sudo systemctl start docker`)
+* if you don't want to run that as root, the user where are you running the script must be in the docker group (`sudo gpasswd -a $USER docker`)
 
 You can create Sabayon repositories from packages built with emerge in a clean environment with docker by running `sabayon-createrepo`.
 
