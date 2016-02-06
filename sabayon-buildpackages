@@ -12,4 +12,4 @@ fi
 
 check_docker_requirements
 
-docker run --rm -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@
+docker run --rm -v "$ROOT"/local_overlay:/usr/local/portage -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@
