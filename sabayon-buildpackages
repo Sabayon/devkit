@@ -2,6 +2,7 @@
 set -e
 ROOT="${ROOT:-$PWD}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
+. /sbin/sabayondevkit-functions.sh
 
 if [ $# -eq 0 ]
   then
@@ -9,8 +10,6 @@ if [ $# -eq 0 ]
    exit 1
 fi
 
-if [ "$(id -u)" != "0" ]; then
-  echo "!! If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker) !!"
-fi
+check_docker_requirements
 
 docker run --rm -v "$ROOT"/portage_artifacts:/usr/portage/packages -ti $DOCKER_IMAGE $@

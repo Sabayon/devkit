@@ -1,5 +1,12 @@
 #!/bin/bash
 
+check_docker_requirements(){
+  if [ "$(id -u)" != "0" ]; then
+    groups | grep -q docker || echo "--> If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker)"
+  fi
+  ps aux | grep -q '[d]ocker' || echo "--> Be sure to have the docker daemon running (sudo systemctl start docker)"
+}
+
 build() {
 local SEARCH=$1
 local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}

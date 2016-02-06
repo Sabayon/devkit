@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+. /sbin/sabayondevkit-functions.sh
+
 ROOT="${ROOT:-$PWD}"
 entropysrv=$(mktemp)
 createrepo=$(mktemp)
@@ -8,9 +10,7 @@ REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 EDITOR=cat
 
-if [ "$(id -u)" != "0" ]; then
-  echo "!! If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker) !!"
-fi
+check_docker_requirements
 
 echo "Repository: $REPOSITORY_NAME"
 echo "Repository Description: $REPOSITORY_DESCRIPTION"
