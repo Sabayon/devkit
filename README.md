@@ -87,4 +87,4 @@ Example:
 
 You can also put your .tbz2 file externally built inside `entropy_artifacts/` in your workspace folder (you can create it if not already present)  and run `sabayon-createrepo` to generate a repository from them.
 
-
+In both `sabayon-createrepo` and `sabayon-buildpackages` you can override the docker image used with the environment variable `DOCKER_IMAGE`.
