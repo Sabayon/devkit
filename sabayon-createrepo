@@ -10,6 +10,17 @@ REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 EDITOR=cat
 
+docker_env=(-e "EDITOR=$EDITOR"
+            -e "REPOSITORY=$REPOSITORY_NAME"
+            -e "LC_ALL=en_US.UTF-8")
+
+docker_volumes=(
+            -v "$SAB_WORKSPACE/entropy_artifacts:/sabayon/artifacts"
+            -v "$createrepo:/sabayon/bin/create_repo.sh"
+            -v "$entropysrv:/etc/entropy/server.conf"
+            -v "$SAB_WORKSPACE/portage_artifacts:/usr/portage/packages"
+)
+
 check_docker_requirements
 
 echo "Repository: $REPOSITORY_NAME"
@@ -68,11 +79,9 @@ default-repository = $REPOSITORY_NAME
 repository=$REPOSITORY_NAME|$REPOSITORY_DESCRIPTION|file:///sabayon/artifacts
 EOF
 
-docker run --rm --entrypoint /bin/bash -e REPOSITORY=$REPOSITORY_NAME -e EDITOR=cat -e LC_ALL=en_US.UTF-8 \
-		-v "$SAB_WORKSPACE"/entropy_artifacts:/sabayon/artifacts \
-		-v $createrepo:/sabayon/bin/create_repo.sh \
-		-v $entropysrv:/etc/entropy/server.conf \
-		-v "$SAB_WORKSPACE"/portage_artifacts:/usr/portage/packages \
-		-ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
+echo "docker run --rm --entrypoint /bin/bash ${docker_env[@]} ${docker_volumes[@]} -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh"
+
+docker run --rm --entrypoint /bin/bash "${docker_env[@]}" "${docker_volumes[@]}" -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
+
 rm -rf $createrepo
 rm -rf $entropysrv

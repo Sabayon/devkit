@@ -170,12 +170,12 @@ my @packages = @ARGV;
 if ($use_equo) {
     my @packages_deps;
     foreach my $p (@packages) {
-      say "[$p] Getting the package dependencies which aren't already installed on the system.. ''";
+      say "[$p] Getting the package dependencies which aren't already installed on the system.. ";
         push( @packages_deps, calculate_missing( $p , 2) )
           if $equo_install_atoms;
         push( @packages_deps, package_deps( $p, 2, 0 ) )
           if $equo_install_version;
-      say "[$p] Done ''"
+      say "[$p] Done"
     }
     @packages_deps = grep { defined() and length() } @packages_deps;   #cleaning
     say "", "[install] Installing missing dependencies with equo", @packages_deps, "";

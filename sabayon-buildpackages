@@ -11,6 +11,26 @@ if [ $# -eq 0 ]
    exit 1
 fi
 
+docker_env=(-e "LC_ALL=en_US.UTF-8")
+docker_volumes=(-v "$SAB_WORKSPACE/local_overlay:/usr/local/portage"
+              -v "$SAB_WORKSPACE/portage_artifacts:/usr/portage/packages"
+              -v "$SAB_WORKSPACE/specs/custom.unmask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.unmask/99-custom.unmask"
+              -v "$SAB_WORKSPACE/specs/custom.mask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.mask/99-custom.mask"
+              -v "$SAB_WORKSPACE/specs/custom.use:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.use/99-custom.use"
+            	-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env/99-custom.env"
+            	-v "$SAB_WORKSPACE/specs/custom.keywords:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.keywords/99-custom.keywords"
+              )
+
+[ -z "$BUILDER_PROFILE" ] || docker_env+=(-e "BUILDER_PROFILE=$BUILDER_PROFILE")
+[ -z "$BUILDER_JOBS" ] || docker_env+=(-e "BUILDER_JOBS=$BUILDER_JOBS")
+[ -z "$USE_EQUO" ] || docker_env+=(-e "USE_EQUO=$USE_EQUO")
+[ -z "$PRESERVED_REBUILD" ] || docker_env+=(-e "PRESERVED_REBUILD=$PRESERVED_REBUILD")
+[ -z "$EQUO_INSTALL_ATOMS" ] || docker_env+=(-e "EQUO_INSTALL_ATOMS=$EQUO_INSTALL_ATOMS")
+[ -z "$EMERGE_DEFAULTS_ARGS" ] || docker_env+=(-e "EMERGE_DEFAULTS_ARGS=$EMERGE_DEFAULTS_ARGS")
+[ -z "$EQUO_INSTALL_VERSION" ] || docker_env+=(-e "EQUO_INSTALL_VERSION=$EQUO_INSTALL_VERSION")
+[ -z "$EQUO_SPLIT_INSTALL" ] || docker_env+=(-e "EQUO_SPLIT_INSTALL=$EQUO_SPLIT_INSTALL")
+[ -z "$ARTIFACTS_DIR" ] || docker_env+=(-e "ARTIFACTS_DIR=$ARTIFACTS_DIR")
+
 check_docker_requirements
 
 [ -d "$SAB_WORKSPACE"/specs ] || mkdir "$SAB_WORKSPACE"/specs/
@@ -20,12 +40,6 @@ check_docker_requirements
 [ -e "$SAB_WORKSPACE"/specs/custom.env ] || touch "$SAB_WORKSPACE"/specs/custom.env
 [ -e "$SAB_WORKSPACE"/specs/custom.keywords ] || touch "$SAB_WORKSPACE"/specs/custom.keywords
 
-docker run --rm \
-	-v "$SAB_WORKSPACE"/local_overlay:/usr/local/portage \
-	-v "$SAB_WORKSPACE"/portage_artifacts:/usr/portage/packages \
-	-v "$SAB_WORKSPACE"/specs/custom.unmask:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.unmask/custom.unmask \
-	-v "$SAB_WORKSPACE"/specs/custom.mask:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.mask/custom.mask \
-	-v "$SAB_WORKSPACE"/specs/custom.use:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.use/custom.use \
-	-v "$SAB_WORKSPACE"/specs/custom.env:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.env/custom.env \
-	-v "$SAB_WORKSPACE"/specs/custom.keywords:/opt/sabayon-build/conf/"$SAB_ARCH"/portage/package.keywords/custom.keywords \
-	-ti $DOCKER_IMAGE $@
+echo "docker run --rm ${docker_env[@]} ${docker_volumes[@]} -ti $DOCKER_IMAGE $@"
+
+docker run --rm "${docker_env[@]}" "${docker_volumes[@]}"	-ti $DOCKER_IMAGE $@
