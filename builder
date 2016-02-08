@@ -16,6 +16,8 @@ my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
 my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
 
+my $make_conf = $ENV{MAKE_CONF};
+
 my @overlays;
 
 GetOptions( 'layman|overlay:s{,}' => \@overlays, 'equo|install:s{,}' => \@equo_install  );
@@ -163,6 +165,9 @@ qx{ls /usr/portage/licenses -1 | xargs -0 > /etc/entropy/packages/license.accept
   ;    #HAHA
 system("equo repo mirrorsort sabayonlinux.org;equo up && equo u")
   if $use_equo;    # Better don't be behind
+
+system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
+
 qx|echo 'ACCEPT_LICENSE="*"' >> /etc/portage/make.conf|;    #just plain evil
 
 my @packages = @ARGV;
