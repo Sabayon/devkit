@@ -8,6 +8,7 @@ createrepo=$(mktemp)
 REPOSITORY_NAME="${REPOSITORY_NAME:-default}"
 REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
+args=("$@")
 EDITOR=cat
 
 docker_env=(-e "EDITOR=$EDITOR"
@@ -18,8 +19,15 @@ docker_volumes=(
             -v "$SAB_WORKSPACE/entropy_artifacts:/sabayon/artifacts"
             -v "$createrepo:/sabayon/bin/create_repo.sh"
             -v "$entropysrv:/etc/entropy/server.conf"
-            -v "$SAB_WORKSPACE/portage_artifacts:/usr/portage/packages"
 )
+
+if [ $# -eq 0 ]
+then
+ docker_volumes+=(-v "$SAB_WORKSPACE/portage_artifacts:/usr/portage/packages" )
+ else
+ echo "Packages directory: ${args[0]}"
+ docker_volumes+=(-v "$SAB_WORKSPACE/${args[0]}:/usr/portage/packages" )
+fi
 
 check_docker_requirements
 
@@ -37,7 +45,7 @@ repo="\${REPOSITORY:-default}"
 equo i entropy-server
 mkdir -p /sabayon/artifacts
 
-[[ -z "\${built_pkgs}" ]] && echo "ouch no pkgs found" && exit 2
+[[ -z "\${built_pkgs}" ]] && echo "ERROR: no tbz2s found" && exit 2
 
 if [ -d "/sabayon/artifacts/standard" ]; then
   eit unlock \$repo || true
@@ -82,6 +90,24 @@ EOF
 echo "docker run --rm --entrypoint /bin/bash ${docker_env[@]} ${docker_volumes[@]} -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh"
 
 docker run --rm --entrypoint /bin/bash "${docker_env[@]}" "${docker_volumes[@]}" -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
+
+if [ -d "$SAB_WORKSPACE/entropy_artifacts/standard" ]; then
+  echo "The Sabayon repository files are in $SAB_WORKSPACE/entropy_artifacts"
+  echo "Now you can upload its content where you want"
+
+  echo ""
+  echo "Here it is the repository file how will look like "
+  echo "(if you plan to upload it to a webserver, modify the URI accordingly)"
+  echo "
+  [$REPOSITORY_NAME]
+  desc = $REPOSITORY_DESCRIPTION
+  repo=file://$SAB_WORKSPACE/entropy_artifacts#bz2
+  enabled = true
+  pkg = file://$SAB_WORKSPACE/entropy_artifacts
+  "
+else
+  echo "Something failed :("
+fi
 
 rm -rf $createrepo
 rm -rf $entropysrv
