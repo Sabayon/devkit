@@ -8,8 +8,6 @@ You can install it in sabayon with:
 sudo equo i sabayon-devkit
 `
 
-# Building package in a clean environment
-
 ## Prerequisites
 
 * docker installed in the machine (`sudo equo i docker`), and the daemon started (`sudo systemctl start docker`)
@@ -17,7 +15,7 @@ sudo equo i sabayon-devkit
 
 Packages can be built in a clean environment with docker by running `sabayon-buildpackages`.
 
-*`sabayon-buildpackages` is just a script wrapper around the `builder` perl script which is placed inside a docker container.*
+*`sabayon-buildpackages` and ``sabayon-createrepo are just a script wrapper around the development docker container.*
 
 ## Define your workspace
 
@@ -43,6 +41,43 @@ If you want, you can define the workspace directory with the variable environmen
 
 `SAB_WORKSPACE=/whatever sabayon-createrepo`
 
+
+## Folder structure
+
+This is the folder structure of your workspace by default, but you can tweak part of it to your tastes with Environment variables:
+
+`
+
+    myproject/
+    myproject/portage_artifacts/
+    myproject/entropy_artifacts/
+    myproject/local_overlay/
+    myproject/specs/
+`
+
+* myproject/portage\_artifacts/ -- Created when `sabayon-buildpackages` is started. It contains the portage artifacts, they will be consumed in the next steps
+* myproject/entropy\_artifacts/ -- Created when `sabayon-createrepo` is started. It contains the entropy repository files.
+* myproject/local_overlay/ -- is the location of your personal overlay (if necessary)
+* myproject/specs -- Create it to customize the building process. It can contain custom files for make.conf, uses, envs, masks, unmasks and keywords for package compilation options
+
+the `specs` folder is structured like this and it's merely optional.
+
+as long as you create those files they are used:
+
+- custom.unmask: that's the place for custom unmasks
+- custom.mask:  contain your custom masks
+- custom.use:  contain your custom use flags
+- custom.env:  contain your custom env specifications
+- custom.keywords: contain your custom keywords
+- make.conf:  it will replace the make.conf on the container with yours.
+
+you can override the Architecture folder in which files are placed specifying in the *SAB_ARCH* environment variable. Default is "intel" (can be *armarch* as for now)
+
+**Note: the portage_artifacts can also contain tbz2 files generated with other methods, if you already have your desired packages already compiled, you can just use `sabayon-createrepo`**
+
+# Building package in a clean environment
+
+
 ## Build your packages
 
 `sabayon-buildpackages` accepts the same arguments as the builder:
@@ -50,48 +85,20 @@ If you want, you can define the workspace directory with the variable environmen
 
     sabayon-buildpackages app-text/tree
     sabayon-buildpackages plasma-meta --layman kde
-    sabayon-buildpackages app-foo/foobar --equo foo-misc/foobar --layman foo --layman bar foo
+    DOCKER_PULL_IMAGE=1 sabayon-buildpackages app-foo/foobar --equo foo-misc/foobar --layman foo --layman bar foo
 
 
-* --layman foobar -- tells the script to add the "foobar" overlay from layman 
+* --layman foobar -- tells the script to add the "foobar" overlay from layman
 * --equo foo-misc/foobar -- tells the script to install "foo-misc/foobar" before compiling
-* The arguments are the packages that you want compile, they can be also in the complete form *e.g. =foo-bar/misc-1.2*
 
+ Environment variables:
+- DOCKER_PULL_IMAGE -- tells the script to update the docker image before compiling, enable it with 1, disable with 0
+- OUTPUT_DIR -- optional, default to "portage_artifacts" in your current working directory, it is the path where emerge generated tbz2 are stored (absolute path)
+- LOCAL_OVERLAY -- optional, you can specify the path to your local overlay (absolute path)
+ The arguments are the packages that you want compile, they can be also in the complete form *e.g. =foo-bar/misc-1.2*
 
-## Folder structure
-
-This is the folder structure that will be automatically created:
-
-`
-
-    myproject/ 
-    myproject/portage_artifacts/
-    myproject/entropy_artifacts/
-    myproject/local_overlay/
-    myproject/specs/
-`
-
-* myproject/portage\_artifacts/ -- will contain the portage artifacts, they will be consumed in the next steps
-* myproject/entropy\_artifacts/ -- will contain the entropy output, our Sabayon repository for the **.tbz2** packages that where in **myproject/portage_artifacts/**
-* myproject/local_overlay/ -- is the location of your personal overlay (if necessary)
-* myproject/specs -- contain custom files for uses, envs, masks, unmasks and keywords for package compilation options
-
-the `specs` folder is structured like this:
-
-- custom.unmask: will contain your custom unmasks
-- custom.mask: will contain your custom masks
-- custom.use: will contain your custom use flags
-- custom.env: will contain your custom env specifications
-- custom.keywords: will contain your custom keywords
-
-you can override the Architecture folder in which files are placed specifying in the *SAB_ARCH* environment variable. Default is "intel" (can be *armarch* as for now)
 
 # Create Sabayon repository from \*.tbz2 in a clean environment
-
-## Prerequisites
-
-* docker installed in the machine (`sudo equo i docker`), and the daemon started (`sudo systemctl start docker`)
-* if you don't want to run that as root, the user where are you running the script must be in the docker group (`sudo gpasswd -a $USER docker`)
 
 You can create Sabayon repositories from packages built with emerge in a clean environment with docker by running `sabayon-createrepo`.
 
@@ -102,9 +109,11 @@ Example:
     sabayon-createrepo
 
     REPOSITORY_NAME=mytest REPOSITORY_DESCRIPTION="My Wonderful Repository" sabayon-createrepo
-    
-* REPOSITORY_NAME -- is your repository name id
-* REPOSITORY_DESCRIPTION -- is your repository description
+
+* REPOSITORY_NAME -- optional, is your repository name id
+* REPOSITORY_DESCRIPTION -- optional, is your repository description
+* PORTAGE_ARTIFACTS -- optional if you use the tools in the same dir, you can specify where portage artifacts (\*.tbz2 files) are (absolute path required)
+* OUTPUT_DIR -- optional, you can specify where the entropy repository will be stored
 
 You can also put your .tbz2 file externally built inside `entropy_artifacts/` in your workspace folder (you can create it if not already present)  and run `sabayon-createrepo` to generate a repository from them.
 

@@ -4,6 +4,9 @@ SAB_WORKSPACE="${SAB_WORKSPACE:-$PWD}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 SAB_ARCH="${SAB_ARCH:-intel}"
 DOCKER_PULL_IMAGE="${DOCKER_PULL_IMAGE:-0}"
+MAKE_CONF="${MAKE_CONF:-$SAB_WORKSPACE/specs/make.conf}"
+OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/portage_artifacts/}"
+LOCAL_OVERLAY="${LOCAL_OVERLAY:-$SAB_WORKSPACE/local_overlay}"
 
 . /sbin/sabayondevkit-functions.sh
 
@@ -14,14 +17,7 @@ if [ $# -eq 0 ]
 fi
 
 docker_env=(-e "LC_ALL=en_US.UTF-8")
-docker_volumes=(-v "$SAB_WORKSPACE/local_overlay:/usr/local/portage"
-              -v "$SAB_WORKSPACE/portage_artifacts:/usr/portage/packages"
-              -v "$SAB_WORKSPACE/specs/custom.unmask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.unmask/99-custom.unmask"
-              -v "$SAB_WORKSPACE/specs/custom.mask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.mask/99-custom.mask"
-              -v "$SAB_WORKSPACE/specs/custom.use:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.use/99-custom.use"
-            	-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env/99-custom.env"
-            	-v "$SAB_WORKSPACE/specs/custom.keywords:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.keywords/99-custom.keywords"
-              )
+docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 
 [ -z "$BUILDER_PROFILE" ] || docker_env+=(-e "BUILDER_PROFILE=$BUILDER_PROFILE")
 [ -z "$BUILDER_JOBS" ] || docker_env+=(-e "BUILDER_JOBS=$BUILDER_JOBS")
@@ -32,18 +28,30 @@ docker_volumes=(-v "$SAB_WORKSPACE/local_overlay:/usr/local/portage"
 [ -z "$EQUO_INSTALL_VERSION" ] || docker_env+=(-e "EQUO_INSTALL_VERSION=$EQUO_INSTALL_VERSION")
 [ -z "$EQUO_SPLIT_INSTALL" ] || docker_env+=(-e "EQUO_SPLIT_INSTALL=$EQUO_SPLIT_INSTALL")
 [ -z "$ARTIFACTS_DIR" ] || docker_env+=(-e "ARTIFACTS_DIR=$ARTIFACTS_DIR")
+[ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/portage")
+
+if [ -e $MAKE_CONF ]; then
+  echo "You specified a make.conf. I hope you know what are you doing"
+  docker_volumes+=(-v "$MAKE_CONF:/etc/portage/make.conf.custom") # file make.conf.custom is in the docker container
+  docker_env+=(-e "MAKE_CONF=/etc/portage/make.conf.custom") # tell to the builder where is our custom make.conf
+fi
 
 check_docker_requirements
 
 [ $DOCKER_PULL_IMAGE -eq 1 ] && docker pull $DOCKER_IMAGE
 
-[ -d "$SAB_WORKSPACE"/specs ] || mkdir "$SAB_WORKSPACE"/specs/
-[ -e "$SAB_WORKSPACE"/specs/custom.mask ] || touch "$SAB_WORKSPACE"/specs/custom.mask
-[ -e "$SAB_WORKSPACE"/specs/custom.unmask ] || touch "$SAB_WORKSPACE"/specs/custom.unmask
-[ -e "$SAB_WORKSPACE"/specs/custom.use ] || touch "$SAB_WORKSPACE"/specs/custom.use
-[ -e "$SAB_WORKSPACE"/specs/custom.env ] || touch "$SAB_WORKSPACE"/specs/custom.env
-[ -e "$SAB_WORKSPACE"/specs/custom.keywords ] || touch "$SAB_WORKSPACE"/specs/custom.keywords
+if [ -d "$SAB_WORKSPACE"/specs ]; then
 
+  [ -e "$SAB_WORKSPACE"/specs/custom.mask ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.mask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.mask/99-custom.mask")
+  [ -e "$SAB_WORKSPACE"/specs/custom.unmask ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.unmask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.unmask/99-custom.unmask")
+  [ -e "$SAB_WORKSPACE"/specs/custom.use ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.use:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.use/99-custom.use")
+  [ -e "$SAB_WORKSPACE"/specs/custom.env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env/99-custom.env")
+  [ -e "$SAB_WORKSPACE"/specs/custom.keywords ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.keywords:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.keywords/99-custom.keywords")
+
+fi
+
+echo "Spawning the package builder container for '$@'."
+echo ""
 echo "docker run --rm ${docker_env[@]} ${docker_volumes[@]} -ti $DOCKER_IMAGE $@"
 
 docker run --rm "${docker_env[@]}" "${docker_volumes[@]}"	-ti $DOCKER_IMAGE $@

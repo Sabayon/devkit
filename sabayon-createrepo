@@ -8,6 +8,9 @@ createrepo=$(mktemp)
 REPOSITORY_NAME="${REPOSITORY_NAME:-default}"
 REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
+PORTAGE_ARTIFACTS="${PORTAGE_ARTIFACTS:-$SAB_WORKSPACE/portage_artifacts}"
+OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/entropy_artifacts}"
+
 args=("$@")
 EDITOR=cat
 
@@ -16,17 +19,17 @@ docker_env=(-e "EDITOR=$EDITOR"
             -e "LC_ALL=en_US.UTF-8")
 
 docker_volumes=(
-            -v "$SAB_WORKSPACE/entropy_artifacts:/sabayon/artifacts"
+            -v "$OUTPUT_DIR:/sabayon/artifacts"
             -v "$createrepo:/sabayon/bin/create_repo.sh"
             -v "$entropysrv:/etc/entropy/server.conf"
 )
 
 if [ $# -eq 0 ]
 then
- docker_volumes+=(-v "$SAB_WORKSPACE/portage_artifacts:/usr/portage/packages" )
+ docker_volumes+=(-v "$PORTAGE_ARTIFACTS:/usr/portage/packages" )
  else
  echo "Packages directory: ${args[0]}"
- docker_volumes+=(-v "$SAB_WORKSPACE/${args[0]}:/usr/portage/packages" )
+ docker_volumes+=(-v "${args[0]}:/usr/portage/packages" )
 fi
 
 check_docker_requirements
