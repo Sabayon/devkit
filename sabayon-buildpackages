@@ -3,6 +3,8 @@ set -e
 SAB_WORKSPACE="${SAB_WORKSPACE:-$PWD}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
 SAB_ARCH="${SAB_ARCH:-intel}"
+DOCKER_PULL_IMAGE="${DOCKER_PULL_IMAGE:-0}"
+
 . /sbin/sabayondevkit-functions.sh
 
 if [ $# -eq 0 ]
@@ -32,6 +34,8 @@ docker_volumes=(-v "$SAB_WORKSPACE/local_overlay:/usr/local/portage"
 [ -z "$ARTIFACTS_DIR" ] || docker_env+=(-e "ARTIFACTS_DIR=$ARTIFACTS_DIR")
 
 check_docker_requirements
+
+[ $DOCKER_PULL_IMAGE -eq 1 ] && docker pull $DOCKER_IMAGE
 
 [ -d "$SAB_WORKSPACE"/specs ] || mkdir "$SAB_WORKSPACE"/specs/
 [ -e "$SAB_WORKSPACE"/specs/custom.mask ] || touch "$SAB_WORKSPACE"/specs/custom.mask
