@@ -77,9 +77,6 @@ you can override the Architecture folder in which files are placed specifying in
 
 # Building package in a clean environment
 
-
-## Build your packages
-
 `sabayon-buildpackages` accepts the same arguments as the builder:
 
 
