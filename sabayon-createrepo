@@ -7,7 +7,7 @@ entropysrv=$(mktemp)
 createrepo=$(mktemp)
 REPOSITORY_NAME="${REPOSITORY_NAME:-default}"
 REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
-DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/builder-amd64}"
+DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/eit-amd64}"
 PORTAGE_ARTIFACTS="${PORTAGE_ARTIFACTS:-$SAB_WORKSPACE/portage_artifacts}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/entropy_artifacts}"
 
@@ -44,8 +44,6 @@ cat >$createrepo <<EOF
 set -e
 built_pkgs=\$(find /usr/portage/packages -name "*.tbz2" | xargs)
 repo="\${REPOSITORY:-default}"
-
-equo i entropy-server
 mkdir -p /sabayon/artifacts
 
 [[ -z "\${built_pkgs}" ]] && echo "ERROR: no tbz2s found" && exit 2
