@@ -7,13 +7,14 @@ my $jobs              = $ENV{BUILDER_JOBS}      // 1;
 my $use_equo          = $ENV{USE_EQUO}          // 1;
 my $preserved_rebuild = $ENV{PRESERVED_REBUILD} // 0;
 my $emerge_defaults_args = $ENV{EMERGE_DEFAULTS_ARGS}
-  // "--accept-properties=-interactive --verbose --oneshot --nospinner --quiet-build=y --complete-graph --buildpkg";
+  // "--accept-properties=-interactive --verbose --oneshot --complete-graph --buildpkg";
 $ENV{FEATURES} = $ENV{FEATURES}
   // "parallel-fetch protect-owned compressdebug splitdebug -userpriv";
 
 my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
 my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
+my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}   // "weekly"; # Can be weekly, main, testing
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
 
 my $make_conf = $ENV{MAKE_CONF};
@@ -163,6 +164,16 @@ system("layman -S;emerge --sync");
 qx|eselect profile set $profile|;
 qx{ls /usr/portage/licenses -1 | xargs -0 > /etc/entropy/packages/license.accept}
   ;    #HAHA
+
+if ($use_equo  && $entropy_repository eq "weekly" ) {
+  qx|equo repo disable sabayonlinux.org|;
+  qx|equo repo enable sabayon-weekly|;
+} elsif( $use_equo  &&  $entropy_repository eq "testing") {
+  qx|equo repo disable sabayon-weekly|;
+  qx|equo repo enable sabayonlinux.org|;
+  qx|equo repo enable sabayon-limbo|;
+}
+
 system("equo repo mirrorsort sabayonlinux.org;equo up && equo u")
   if $use_equo;    # Better don't be behind
 
