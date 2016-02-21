@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+# Author: mudler@sabayonlinux.org, skullbocks@sabayonlinux.org
+
+use strict;
+use DBI;
+use feature 'say';
+
+my $arch = $ENV{ARCH} // "amd64";
+
+my $dbh = DBI->connect(
+    "dbi:SQLite:dbname=/var/lib/entropy/client/database/$arch/equo.db",
+    "", "", { RaiseError => 1 },
+) or die $DBI::errstr;
+my $to_build = {};
+
+my $sth = $dbh->prepare(
+"SELECT DISTINCT baseinfo.category, baseinfo.name, baseinfo.version FROM baseinfo JOIN needed_libs ON baseinfo.idpackage = needed_libs.idpackage JOIN preserved_libs ON needed_libs.soname = preserved_libs.library"
+);
+$sth->execute();
+
+my $row;
+while ( $row = $sth->fetchrow_arrayref() ) {
+    $to_build->{"@$row[0]/@$row[1]-@$row[2]"}++;
+}
+$sth->finish();
+
+my $to_install = join( " ", keys %{$to_build} );
+if ( $to_install ne "" ) {
+    say "Those packages seems to request libs no longer available: $to_install";
+}
+else {
+    say "No packages request outdated libs";
+}
+$dbh->disconnect();

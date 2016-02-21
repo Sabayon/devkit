@@ -27,3 +27,4 @@ install:
 	install -d $(DESTDIR)/$(UBINDIR)
 	install -m 0755 sabayon-buildpackages $(DESTDIR)/$(UBINDIR)/
 	install -m 0755 sabayon-createrepo $(DESTDIR)/$(UBINDIR)/
+	install -m 0755 sabayon-entropypreservedlibs $(DESTDIR)/$(UBINDIR)/
