@@ -7,6 +7,8 @@ check_docker_requirements(){
   ps aux | grep -q '[d]ocker' || echo "--> Be sure to have the docker daemon running (sudo systemctl start docker) of configure it to run on boot (sudo systemctl enable docker). Trying to start it anyway" && sudo systemctl start docker
 }
 
+die() { echo "$@" 1>&2 ; exit 1; }
+
 build() {
 local SEARCH=$1
 local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}

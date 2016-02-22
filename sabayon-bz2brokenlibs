@@ -1,0 +1,26 @@
+#!/bin/bash
+
+. /sbin/sabayondevkit-functions.sh
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# the temp directory used, within $DIR
+WORK_DIR=`mktemp -d -p "$DIR"`
+
+# deletes the temp directory
+function cleanup {
+  rm -rf "$WORK_DIR"
+}
+
+# register the cleanup function to be called on the EXIT signal
+trap cleanup EXIT
+
+tbz=$1
+
+[ -z "$tbz" ] && die "No Arg given"
+
+tar xjf "$tbz" -C "$WORK_DIR"
+
+for file in $(find "$WORK_DIR" | xargs echo)
+do
+  [ -f "$file" ] && /usr/bin/sabayon-brokenlibs "$file"
+done

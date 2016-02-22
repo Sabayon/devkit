@@ -1,0 +1,26 @@
+#!/bin/bash
+
+PACKAGES=()
+bin=$1
+
+. /sbin/sabayondevkit-functions.sh
+
+[ -z "$bin" ] && die "No Arg given"
+
+# Getting linked libraries
+for i in $(ldd $1 | cut -d \( -f1 | cut -d \> -f2 | grep "/" | xargs echo)
+do
+  package=$(equo q belongs -q $i)
+  [ -z "$package" ] && die "borked: $i"
+  PACKAGES+=($package)
+done
+
+# Unique and ordered
+U_PACKAGES=$(echo "${PACKAGES[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
+
+if [ "${#PACKAGES}" -ne 0 ]; then
+	for i in ${U_PACKAGES[@]}
+	do
+	  echo " $i"
+	done
+fi
