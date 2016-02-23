@@ -25,8 +25,4 @@ install:
 	install -m 0755 builder $(DESTDIR)/$(USBINDIR)/
 
 	install -d $(DESTDIR)/$(UBINDIR)
-	install -m 0755 sabayon-buildpackages $(DESTDIR)/$(UBINDIR)/
-	install -m 0755 sabayon-createrepo $(DESTDIR)/$(UBINDIR)/
-	install -m 0755 sabayon-entropypreservedlibs $(DESTDIR)/$(UBINDIR)/
-	install -m 0755 sabayon-brokenlibs $(DESTDIR)/$(UBINDIR)/
-	install -m 0755 sabayon-bz2brokenlibs $(DESTDIR)/$(UBINDIR)/
+	install -m 0755 sabayon-* $(DESTDIR)/$(UBINDIR)/
