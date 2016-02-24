@@ -8,6 +8,7 @@ MAKE_CONF="${MAKE_CONF:-$SAB_WORKSPACE/specs/make.conf}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/portage_artifacts/}"
 LOCAL_OVERLAY="${LOCAL_OVERLAY:-$SAB_WORKSPACE/local_overlay}"
 ENTROPY_REPOSITORY="${ENTROPY_REPOSITORY:-main}" # Can be weekly, main, testing
+DOCKER_OPTS="${DOCKER_OPTS:--ti --rm}"
 
 . /sbin/sabayondevkit-functions.sh
 
@@ -55,6 +56,6 @@ fi
 
 echo "Spawning the package builder container for '$@'."
 echo ""
-echo "docker run --rm ${docker_env[@]} ${docker_volumes[@]} -ti $DOCKER_IMAGE $@"
+echo "docker run $DOCKER_OPTS ${docker_env[@]} ${docker_volumes[@]} $DOCKER_IMAGE $@"
 
-docker run --rm "${docker_env[@]}" "${docker_volumes[@]}"	-ti $DOCKER_IMAGE $@
+docker run $DOCKER_OPTS "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE $@
