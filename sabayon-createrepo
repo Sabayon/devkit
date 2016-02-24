@@ -99,7 +99,7 @@ echo "docker run --rm --entrypoint /bin/bash ${docker_env[@]} ${docker_volumes[@
 
 docker run --rm --entrypoint /bin/bash "${docker_env[@]}" "${docker_volumes[@]}" -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
 
-if [ -d "$SAB_WORKSPACE/entropy_artifacts/standard" ]; then
+if [ -d "$OUTPUT_DIR/standard" ]; then
   echo "The Sabayon repository files are in $SAB_WORKSPACE/entropy_artifacts"
   echo "Now you can upload its content where you want"
 
@@ -109,9 +109,9 @@ if [ -d "$SAB_WORKSPACE/entropy_artifacts/standard" ]; then
   echo "
   [$REPOSITORY_NAME]
   desc = $REPOSITORY_DESCRIPTION
-  repo=file://$SAB_WORKSPACE/entropy_artifacts#bz2
+  repo=file://$OUTPUT_DIR#bz2
   enabled = true
-  pkg = file://$SAB_WORKSPACE/entropy_artifacts
+  pkg = file://$OUTPUT_DIR
   "
 else
   echo "Something failed :("
