@@ -21,7 +21,7 @@ my $make_conf = $ENV{MAKE_CONF};
 
 my @overlays;
 
-GetOptions( 'layman|overlay:s{,}' => \@overlays, 'equo|install:s{,}' => \@equo_install  );
+GetOptions( 'layman|overlay:s{,}' => \@overlays, 'equo|install:s{,}' => \@equo_install,'equorm|remove:s{,}' => \@equo_remove );
 
 if ( @ARGV == 0 ) {
     help();
@@ -197,9 +197,11 @@ if ($use_equo) {
     say "", "[install] Installing missing dependencies with equo", @packages_deps, "";
     if ($equo_split_install) {
         system("equo i --bdeps $_") for (@packages_deps,@equo_install);
+        system("equo rm --nodeps $_") for (@equo_remove);
     }
     else {
         system("equo i --bdeps @packages_deps @equo_install");
+        system("equo rm --nodeps @equo_remove");
     }
 }
 
