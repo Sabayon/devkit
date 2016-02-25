@@ -31,6 +31,8 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$EQUO_SPLIT_INSTALL" ] || docker_env+=(-e "EQUO_SPLIT_INSTALL=$EQUO_SPLIT_INSTALL")
 [ -z "$ARTIFACTS_DIR" ] || docker_env+=(-e "ARTIFACTS_DIR=$ARTIFACTS_DIR")
 [ -z "$ENTROPY_REPOSITORY" ] || docker_env+=(-e "ENTROPY_REPOSITORY=$ENTROPY_REPOSITORY")
+[ -z "$DISTFILES" ] || docker_volumes+=(-v "$DISTFILES:/usr/portage/distfiles")
+
 
 [ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/portage")
 
