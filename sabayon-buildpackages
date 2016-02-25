@@ -9,6 +9,7 @@ OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/portage_artifacts/}"
 LOCAL_OVERLAY="${LOCAL_OVERLAY:-$SAB_WORKSPACE/local_overlay}"
 ENTROPY_REPOSITORY="${ENTROPY_REPOSITORY:-main}" # Can be weekly, main, testing
 DOCKER_OPTS="${DOCKER_OPTS:--ti --rm}"
+TEMPDIR=$(mktemp -d)
 
 . /sbin/sabayondevkit-functions.sh
 
@@ -33,6 +34,16 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ENTROPY_REPOSITORY" ] || docker_env+=(-e "ENTROPY_REPOSITORY=$ENTROPY_REPOSITORY")
 [ -z "$DISTFILES" ] || docker_volumes+=(-v "$DISTFILES:/usr/portage/distfiles")
 
+if [ -n "$REMOTE_OVERLAY" ]; then
+  git clone "$REMOTE_OVERLAY" "$TEMPDIR"
+  LOCAL_OVERLAY=$TEMPDIR
+fi
+
+function cleanup {
+	rm -rf "$TEMPDIR"
+}
+
+trap cleanup EXIT
 
 [ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/portage")
 
