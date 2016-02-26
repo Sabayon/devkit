@@ -197,11 +197,15 @@ if ($use_equo) {
     say "", "[install] Installing missing dependencies with equo", @packages_deps, "";
     if ($equo_split_install) {
         system("equo i --bdeps $_") for (@packages_deps,@equo_install);
-        system("equo rm --nodeps $_") for (@equo_remove);
+        if (@equo_remove > 0){
+          system("equo rm --nodeps $_") for (@equo_remove);
+        }
     }
     else {
         system("equo i --bdeps @packages_deps @equo_install");
-        system("equo rm --nodeps @equo_remove");
+        if (@equo_remove > 0){
+          system("equo rm --nodeps @equo_remove");
+        }
     }
 }
 
