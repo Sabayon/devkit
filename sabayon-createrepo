@@ -101,7 +101,7 @@ echo "docker $DOCKER_OPTS  ${docker_env[@]} ${docker_volumes[@]} $DOCKER_IMAGE /
 docker run  $DOCKER_OPTS --entrypoint /bin/bash "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
 
 if [ -d "$OUTPUT_DIR/standard" ]; then
-  echo "The Sabayon repository files are in $SAB_WORKSPACE/entropy_artifacts"
+  echo "The Sabayon repository files are in $OUTPUT_DIR"
   echo "Now you can upload its content where you want"
 
   echo ""
