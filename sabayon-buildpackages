@@ -33,6 +33,8 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ARTIFACTS_DIR" ] || docker_env+=(-e "ARTIFACTS_DIR=$ARTIFACTS_DIR")
 [ -z "$ENTROPY_REPOSITORY" ] || docker_env+=(-e "ENTROPY_REPOSITORY=$ENTROPY_REPOSITORY")
 [ -z "$DISTFILES" ] || docker_volumes+=(-v "$DISTFILES:/usr/portage/distfiles")
+[ -z "$ENTROPY_DOWNLOADED_PACKAGES" ] || docker_volumes+=(-v "$ENTROPY_DOWNLOADED_PACKAGES")
+
 
 if [ -n "$REMOTE_OVERLAY" ]; then
   git clone "$REMOTE_OVERLAY" "$TEMPDIR"
