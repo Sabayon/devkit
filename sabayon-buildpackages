@@ -22,6 +22,7 @@ fi
 docker_env=(-e "LC_ALL=en_US.UTF-8")
 docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 
+[ -z "$PORTAGE_CACHE" ] || docker_volumes+=(-v "$PORTAGE_CACHE:/usr/portage")
 [ -z "$BUILDER_PROFILE" ] || docker_env+=(-e "BUILDER_PROFILE=$BUILDER_PROFILE")
 [ -z "$BUILDER_JOBS" ] || docker_env+=(-e "BUILDER_JOBS=$BUILDER_JOBS")
 [ -z "$USE_EQUO" ] || docker_env+=(-e "USE_EQUO=$USE_EQUO")
@@ -34,8 +35,6 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ENTROPY_REPOSITORY" ] || docker_env+=(-e "ENTROPY_REPOSITORY=$ENTROPY_REPOSITORY")
 [ -z "$DISTFILES" ] || docker_volumes+=(-v "$DISTFILES:/usr/portage/distfiles")
 [ -z "$ENTROPY_DOWNLOADED_PACKAGES" ] || docker_volumes+=(-v "$ENTROPY_DOWNLOADED_PACKAGES:/var/lib/entropy/client/packages")
-[ -z "$PORTAGE_CACHE" ] || docker_volumes+=(-v "$PORTAGE_CACHE:/usr/portage")
-
 
 if [ -n "$REMOTE_OVERLAY" ]; then
   git clone "$REMOTE_OVERLAY" "$TEMPDIR"
