@@ -1,0 +1,32 @@
+#!/usr/bin/python
+# mudler <mudler@sabayon.org>
+# Edit: truncate a tbz2 with just data
+import os
+import sys
+from portage import xpak
+
+def usage():
+        sys.stderr.write("usage: %s <tbz2_file>\n" % os.path.basename(sys.argv[0]))
+
+def main():
+        if len(sys.argv) != 2:
+                usage()
+                return 1
+
+        input_file = sys.argv[1]
+
+        if not os.path.isfile(input_file):
+                usage()
+                return 1
+
+        t = xpak.tbz2(input_file)
+        t.scan()
+        f = open(input_file, 'r+')
+        f.seek(-t.xpaksize, os.SEEK_END)
+        f.truncate()
+        f.close()
+
+        return 0
+
+if __name__ == '__main__':
+        sys.exit(main())
