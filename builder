@@ -63,7 +63,7 @@ sub calculate_missing {
     # Getting the package dependencies and the installed packages
     say "[$package] Getting the package dependencies and the installed packages";
     my @Packages = package_deps( $package, $depth, 1 );
-    my @Installed_Packages = qx/equo q --quiet list installed/;
+    my @Installed_Packages = qx/equo q list installed --quiet/;
     chomp(@Installed_Packages);
     say "[$package] Getting the package dependencies and the installed packages";
 
