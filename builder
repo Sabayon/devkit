@@ -69,7 +69,7 @@ sub calculate_missing {
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
-      map { ( split( /\s/, $_ ) )[3] => 1 } @Installed_Packages;
+      map { $_ => 1 } @Installed_Packages;
     my %available_packs = map { $_ => 1 } available_packages();
 
 # removing from packages the one that are already installed and keeping only the available in the entropy repositories
