@@ -68,7 +68,6 @@ sub calculate_missing {
     # Getting the package dependencies and the installed packages
     say "[$package] Getting the package dependencies and the installed packages";
     my @Packages = package_deps( $package, $depth, 1 );
-    chomp(@Installed_Packages);
     say "[$package] Getting the package dependencies and the installed packages";
 
     #taking only the 4th column of output as key of the hashmap
@@ -193,6 +192,7 @@ if ($use_equo) {
     my @packages_deps;
     my @Installed_Packages = qx/equo q list installed --quiet/;
     my @Available_Packages = available_packages();
+    chomp(@Installed_Packages);
     foreach my $p (@packages) {
       say "[$p] Getting the package dependencies which aren't already installed on the system.. ";
         push( @packages_deps, calculate_missing( $p , $dep_scan_depth,\@Installed_Packages,\@Available_Packages) )
