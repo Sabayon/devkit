@@ -71,8 +71,6 @@ sub calculate_missing {
     say "[$package] Getting the package dependencies and the installed packages";
     my @dependencies = package_deps( $package, $depth, 1 );
     my %install_dependencies = map { $_ => 1 } @dependencies;
-    say "[$package] Getting the package dependencies and the installed packages";
-
     # Look for any virtuals and remove its immediate dependencies to avoid
     # installing multiple conflicting packages one by one
     my @virtual_deps;
@@ -93,7 +91,7 @@ sub calculate_missing {
     my @to_install = grep( defined $available_packs{$_},
         uniq( grep( !defined $installed_packs{$_}, @dependencies ) ) );
     @to_install=grep { length } @to_install;
-    say "[$package] packages that will be installed with equo: @to_install" if @to_install>0;
+  #  say "[$package] packages that will be installed with equo: @to_install" if @to_install>0;
 
     return @to_install;
 }
