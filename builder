@@ -67,8 +67,20 @@ sub calculate_missing {
 
     # Getting the package dependencies and the installed packages
     say "[$package] Getting the package dependencies and the installed packages";
-    my @Packages = package_deps( $package, $depth, 1 );
+    my @dependencies = package_deps( $package, $depth, 1 );
+    my %install_dependencies = map { $_ => 1 } @dependencies;
     say "[$package] Getting the package dependencies and the installed packages";
+
+    # Look for any virtuals and remove its immediate dependencies to avoid
+    # installing multiple conflicting packages one by one
+    my @virtual_deps = ();
+    for my $dep (@dependencies) {
+        push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual/ );
+    }
+    for my $dep (@virtual_deps) {
+        $install_dependencies{$dep} = 0;
+    }
+    @dependencies = grep { $install_dependencies{$_} } @dependencies;
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
@@ -77,7 +89,7 @@ sub calculate_missing {
 
 # removing from packages the one that are already installed and keeping only the available in the entropy repositories
     my @to_install = grep( defined $available_packs{$_},
-        uniq( grep( !defined $installed_packs{$_}, @Packages ) ) );
+        uniq( grep( !defined $installed_packs{$_}, @dependencies ) ) );
     @to_install=grep { length } @to_install;
     say "[$package] packages that will be installed with equo: @to_install" if @to_install>0;
 
