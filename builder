@@ -62,8 +62,8 @@ sub calculate_missing {
     my $package = shift;
     my $depth = shift;
 
-    my @Installed_Packages = @{shift};
-    my @Available_Packages = @{shift};
+    my @Installed_Packages = @{+shift};
+    my @Available_Packages = @{+shift};
 
     # Getting the package dependencies and the installed packages
     say "[$package] Getting the package dependencies and the installed packages";
