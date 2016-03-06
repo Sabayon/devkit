@@ -17,6 +17,7 @@ my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
 my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}   // "main"; # Can be weekly, main, testing
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
+my $dep_scan_depth = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -190,9 +191,9 @@ if ($use_equo) {
     my @packages_deps;
     foreach my $p (@packages) {
       say "[$p] Getting the package dependencies which aren't already installed on the system.. ";
-        push( @packages_deps, calculate_missing( $p , 2) )
+        push( @packages_deps, calculate_missing( $p , $dep_scan_depth) )
           if $equo_install_atoms;
-        push( @packages_deps, package_deps( $p, 2, 0 ) )
+        push( @packages_deps, package_deps( $p, $dep_scan_depth, 0 ) )
           if $equo_install_version;
       say "[$p] Done"
     }
