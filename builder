@@ -78,7 +78,7 @@ sub calculate_missing {
         push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
     }
     for my $dep (@virtual_deps) {
-        $install_dependencies{$dep} = 0 if ( $dep =~ /^virtual\// );
+        $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
     }
     @dependencies = grep { $install_dependencies{$_} } @dependencies;
 
