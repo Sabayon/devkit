@@ -64,13 +64,13 @@ sub calculate_missing {
     # Getting the package dependencies and the installed packages
     say "[$package] Getting the package dependencies and the installed packages";
     my @Packages = package_deps( $package, $depth, 1 );
-    my @Installed_Packages = qx/equo q --quiet list installed/;
+    my @Installed_Packages = qx/equo q list installed --quiet/;
     chomp(@Installed_Packages);
     say "[$package] Getting the package dependencies and the installed packages";
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
-      map { ( split( /\s/, $_ ) )[3] => 1 } @Installed_Packages;
+      map { $_ => 1 } @Installed_Packages;
     my %available_packs = map { $_ => 1 } available_packages();
 
 # removing from packages the one that are already installed and keeping only the available in the entropy repositories
