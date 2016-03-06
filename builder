@@ -18,7 +18,7 @@ my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}   // "main"; # Can be weekly, main, testing
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
 my $dep_scan_depth = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
-my $skip_sync = $ENV{SKIP_SYNC} // 0;
+my $skip_portage_sync = $ENV{SKIP_PORTAGE_SYNC} // 0;
 my $webrsync = $ENV{WEBRSYNC} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
@@ -174,7 +174,7 @@ auto-sync = no' > /etc/portage/repos.conf/local.conf
 
 system("mkdir -p /usr/portage/distfiles/git3-src");
 
-unless($skip_sync == 1){
+unless($skip_portage_sync == 1){
   # sync portage and overlays
   system("layman -S");
   if($webrsync == 1){
