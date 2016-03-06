@@ -210,10 +210,8 @@ if ($use_equo) {
         }
     }
     else {
-        system("equo i --bdeps @packages_deps @equo_install");
-        if (@equo_remove > 0){
-          system("equo rm --nodeps @equo_remove");
-        }
+        system("equo i --bdeps @packages_deps @equo_install") if ( @packages_deps > 0 or @equo_install > 0);
+        system("equo rm --nodeps @equo_remove") if (@equo_remove > 0);
     }
 }
 
