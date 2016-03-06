@@ -73,12 +73,12 @@ sub calculate_missing {
 
     # Look for any virtuals and remove its immediate dependencies to avoid
     # installing multiple conflicting packages one by one
-    my @virtual_deps = ();
+    my @virtual_deps;
     for my $dep (@dependencies) {
-        push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual/ );
+        push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
     }
     for my $dep (@virtual_deps) {
-        $install_dependencies{$dep} = 0;
+        $install_dependencies{$dep} = 0 if ( $dep =~ /^virtual\// );
     }
     @dependencies = grep { $install_dependencies{$_} } @dependencies;
 
