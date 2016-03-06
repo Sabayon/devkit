@@ -14,6 +14,7 @@ $ENV{FEATURES} = $ENV{FEATURES}
 my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
 my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
+my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}   // "main"; # Can be weekly, main, testing
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
 
@@ -174,8 +175,10 @@ if ($use_equo  && $entropy_repository eq "weekly" ) {
   qx|equo repo enable sabayon-limbo|;
 }
 
-system("equo repo mirrorsort sabayonlinux.org;equo up && equo u")
-  if $use_equo;    # Better don't be behind
+if ($use_equo) {
+  system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
+  system("equo up && equo u")
+}
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
