@@ -70,17 +70,19 @@ sub calculate_missing {
     # Getting the package dependencies and the installed packages
     say "[$package] Getting the package dependencies and the installed packages";
     my @dependencies = package_deps( $package, $depth, 1 );
-    my %install_dependencies = map { $_ => 1 } @dependencies;
-    # Look for any virtuals and remove its immediate dependencies to avoid
-    # installing multiple conflicting packages one by one
-    my @virtual_deps;
-    for my $dep (@dependencies) {
-        push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
-    }
-    for my $dep (@virtual_deps) {
-        $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
-    }
-    @dependencies = grep { $install_dependencies{$_} } @dependencies;
+
+    # XXX: Endless loop as for now.
+    # my %install_dependencies = map { $_ => 1 } @dependencies;
+    # # Look for any virtuals and remove its immediate dependencies to avoid
+    # # installing multiple conflicting packages one by one
+    # my @virtual_deps;
+    # for my $dep (@dependencies) {
+    #     push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
+    # }
+    # for my $dep (@virtual_deps) {
+    #     $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
+    # }
+    # @dependencies = grep { $install_dependencies{$_} } @dependencies;
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
