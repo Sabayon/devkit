@@ -25,6 +25,9 @@ docker_volumes=(
             -v "$entropysrv:/etc/entropy/server.conf"
 )
 
+[ -z "$KEYS" ] || docker_volumes+=(-v "$KEYS:/etc/entropy/gpg-keys/")
+
+
 if [ $# -eq 0 ]
 then
  docker_volumes+=(-v "$PORTAGE_ARTIFACTS:/usr/portage/packages" )
