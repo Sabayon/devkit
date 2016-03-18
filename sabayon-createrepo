@@ -65,7 +65,7 @@ echo "Yes" | eit inject \${built_pkgs} || { echo "ouch unable to inject" && exit
 echo "Yes Yes Yes" | eit commit --quick
 
 [ -f "/etc/entropy/mykeys/key.pub" ] && [ -f "/etc/entropy/mykeys/private.key" ] &&\
-eit key import \$repo /etc/entropy/mykeys/private.key /etc/entropy/mykeys/key.pub && eit key sign \$repo
+eit key import \$repo /etc/entropy/mykeys/private.key /etc/entropy/mykeys/key.pub && { eit key sign \$repo || true; }
 
 eit push --quick --force
 
