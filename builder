@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 
 use Getopt::Long;
-use List::MoreUtils qw(uniq);
 use v5.10;
 
 my $profile           = $ENV{BUILDER_PROFILE}   // 3;
