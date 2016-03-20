@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 
 use Getopt::Long;
+use v5.10;
 
 my $profile           = $ENV{BUILDER_PROFILE}   // 3;
 my $jobs              = $ENV{BUILDER_JOBS}      // 1;
@@ -42,9 +43,30 @@ sub package_deps {
     my $package = shift;
     my $depth   = shift // 1;  # defaults to 1 level of depthness of the tree
     my $atom    = shift // 0;
-    return
-      map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
-      qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
+
+    # Since we expect this sub to be called multiple times with the same arguments, cache the results
+    state %cache;
+    $cache_key = "${package}:${depth}:${atom}";
+
+    if ( ! exists $cache{$cache_key} ) {
+        @dependencies = qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
+        chomp @dependencies;
+
+        # If an unversioned atom is given, equery returns results for all versions in the portage tree
+        # leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
+        # possible dependencies, which isn't perfectly accurate but should be good enough. For completely
+        # accurate results, pass in a versioned atom.
+        @dependencies = 
+          uniq
+          sort
+          grep { $_ }
+          map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
+          @dependencies;
+
+        $cache{$cache_key} = \@dependencies;
+    }
+
+    return @{ $cache{$cache_key} };
 }
 
 #Input: nothing
@@ -71,18 +93,17 @@ sub calculate_missing {
     say "[$package] Getting the package dependencies and the installed packages";
     my @dependencies = package_deps( $package, $depth, 1 );
 
-    # XXX: Endless loop as for now.
-    # my %install_dependencies = map { $_ => 1 } @dependencies;
-    # # Look for any virtuals and remove its immediate dependencies to avoid
-    # # installing multiple conflicting packages one by one
-    # my @virtual_deps;
-    # for my $dep (@dependencies) {
-    #     push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
-    # }
-    # for my $dep (@virtual_deps) {
-    #     $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
-    # }
-    # @dependencies = grep { $install_dependencies{$_} } @dependencies;
+    my %install_dependencies = map { $_ => 1 } @dependencies;
+    # Look for any virtuals and remove its immediate dependencies to avoid
+    # installing multiple conflicting packages one by one
+    my @virtual_deps;
+    for my $dep (@dependencies) {
+        push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
+    }
+    for my $dep (@virtual_deps) {
+        $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
+    }
+    @dependencies = grep { $install_dependencies{$_} } @dependencies;
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
@@ -93,7 +114,7 @@ sub calculate_missing {
     my @to_install = grep( defined $available_packs{$_},
         uniq( grep( !defined $installed_packs{$_}, @dependencies ) ) );
     @to_install=grep { length } @to_install;
-  #  say "[$package] packages that will be installed with equo: @to_install" if @to_install>0;
+    say "[$package] packages that will be installed with equo: @to_install" if @to_install>0;
 
     return @to_install;
 }
