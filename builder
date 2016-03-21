@@ -56,12 +56,11 @@ sub package_deps {
         # leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
         # possible dependencies, which isn't perfectly accurate but should be good enough. For completely
         # accurate results, pass in a versioned atom.
-        @dependencies = 
-          uniq
+        @dependencies = uniq(
           sort
           grep { $_ }
           map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
-          @dependencies;
+          @dependencies);
 
         $cache{$cache_key} = \@dependencies;
     }
