@@ -20,6 +20,7 @@ my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}   // "main"; # Can be weekly
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
 my $dep_scan_depth = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
 my $skip_portage_sync = $ENV{SKIP_PORTAGE_SYNC} // 0;
+my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL}   // 0;
 my $webrsync = $ENV{WEBRSYNC} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
@@ -257,6 +258,18 @@ if ($use_equo) {
 }
 
 say "* Ready to compile, finger crossed";
+
+my $rt;
+
+if ($emerge_split_install) {
+  for my $pack (@packages){
+    my $tmp_rt=system("emerge $emerge_defaults_args -j $jobs $pack");
+    $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
+  }
+}
+else {
+  $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
+}
 
 my $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
 
