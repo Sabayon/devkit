@@ -10,6 +10,7 @@ REPOSITORY_DESCRIPTION="${REPOSITORY_DESCRIPTION:-My Sabayon repository}"
 DOCKER_IMAGE="${DOCKER_IMAGE:-sabayon/eit-amd64}"
 PORTAGE_ARTIFACTS="${PORTAGE_ARTIFACTS:-$SAB_WORKSPACE/portage_artifacts}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/entropy_artifacts}"
+DOCKER_OPTS="${DOCKER_OPTS:--ti --rm}"
 
 args=("$@")
 EDITOR=cat
@@ -88,6 +89,6 @@ function cleanup {
 trap cleanup EXIT
 
 
-echo "docker run --rm --entrypoint /bin/bash ${docker_env[@]} ${docker_volumes[@]} -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh"
+echo "docker run $DOCKER_OPTS --entrypoint /bin/bash ${docker_env[@]} ${docker_volumes[@]} $DOCKER_IMAGE /sabayon/bin/create_repo.sh"
 
-docker run --rm --entrypoint /bin/bash "${docker_env[@]}" "${docker_volumes[@]}" -ti $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
+docker run $DOCKER_OPTS  --entrypoint /bin/bash "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE /sabayon/bin/create_repo.sh || true
