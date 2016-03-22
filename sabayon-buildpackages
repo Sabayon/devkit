@@ -24,6 +24,7 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 
 [ -z "$PORTAGE_CACHE" ] || docker_volumes+=(-v "$PORTAGE_CACHE:/usr/portage")
 [ -z "$BUILDER_PROFILE" ] || docker_env+=(-e "BUILDER_PROFILE=$BUILDER_PROFILE")
+[ -z "$EMERGE_SPLIT_INSTALL" ] || docker_env+=(-e "EMERGE_SPLIT_INSTALL=$EMERGE_SPLIT_INSTALL")
 [ -z "$BUILDER_JOBS" ] || docker_env+=(-e "BUILDER_JOBS=$BUILDER_JOBS")
 [ -z "$USE_EQUO" ] || docker_env+=(-e "USE_EQUO=$USE_EQUO")
 [ -z "$PRESERVED_REBUILD" ] || docker_env+=(-e "PRESERVED_REBUILD=$PRESERVED_REBUILD")
