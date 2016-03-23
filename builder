@@ -257,6 +257,8 @@ if ($use_equo) {
 
 say "* Ready to compile, finger crossed";
 
+system("emerge --info"); #always give detailed information about the building environment, helpful to debug
+
 my $rt;
 
 if ($emerge_split_install) {
