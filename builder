@@ -271,8 +271,6 @@ else {
   $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
 }
 
-my $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
-
 my $return = $rt >> 8;
 
 if ($preserved_rebuild) {
