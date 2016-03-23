@@ -90,7 +90,6 @@ sub calculate_missing {
     my @Available_Packages = @{+shift};
 
     # Getting the package dependencies and the installed packages
-    say "[$package] Getting the package dependencies and the installed packages";
     my @dependencies = package_deps( $package, $depth, 1 );
 
     my %install_dependencies = map { $_ => 1 } @dependencies;
@@ -241,10 +240,9 @@ if ($use_equo) {
           if $equo_install_atoms;
         push( @packages_deps, package_deps( $p, $dep_scan_depth, 0 ) )
           if $equo_install_version;
-      say "[$p] Done"
     }
     @packages_deps = grep { defined() and length() } @packages_deps;   #cleaning
-    say "", "[install] Installing missing dependencies with equo", @packages_deps, "";
+    say "", "[install] Those dependencies will be installed with equo :", @packages_deps, "";
     if ($equo_split_install) {
         system("equo i --bdeps $_") for (@packages_deps,@equo_install);
         if (@equo_remove > 0){
