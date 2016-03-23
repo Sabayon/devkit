@@ -2,6 +2,7 @@
 
 use Getopt::Long;
 use v5.10;
+no feature "say";
 
 my $profile           = $ENV{BUILDER_PROFILE}   // 3;
 my $jobs              = $ENV{BUILDER_JOBS}      // 1;
@@ -134,11 +135,12 @@ sub help {
       "\t$0 app-foo/foobar --equo foo-misc/foobar --equo net-foo/foobar --layman foo --layman bar foo",
       "**************************", "",
 "You can supply multiple overlays as well: $0 plasma-meta --layman kde plab",
+      "The documentation is available at https://github.com/Sabayon/devkit",
       "";
 }
 
 say
-"************* IF YOU WANT TO SUPPLY ADDITIONAL ARGS TO EMERGE, pass to docker EMERGE_DEFAULT_OPTS env with your options *************";
+"****************************************************";
 
 if ( @overlays > 0 ) {
     say "Overlay(s) to add";
@@ -147,11 +149,11 @@ if ( @overlays > 0 ) {
     }
 }
 
-say "Installing:";
+say "[*] Installing:";
 
 say "\t* " . $_ for @ARGV;
 
-say "* Syncing stuff for you, if it's the first time, can take a while";
+say "[*] Syncing configurations files, Layman and Portage";
 
 # Syncronizing portage configuration and adding overlays
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
@@ -255,7 +257,7 @@ if ($use_equo) {
     }
 }
 
-say "* Ready to compile, finger crossed";
+say "*** Ready to compile, finger crossed ***";
 
 system("emerge --info"); #always give detailed information about the building environment, helpful to debug
 
