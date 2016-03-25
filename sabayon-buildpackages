@@ -37,6 +37,7 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ENTROPY_REPOSITORY" ] || docker_env+=(-e "ENTROPY_REPOSITORY=$ENTROPY_REPOSITORY")
 [ -z "$SKIP_PORTAGE_SYNC" ] || docker_env+=(-e "SKIP_PORTAGE_SYNC=$SKIP_PORTAGE_SYNC")
 [ -z "$WEBRSYNC" ] || docker_env+=(-e "WEBRSYNC=$WEBRSYNC")
+[ -z "$ENMAN_REPOSITORIES" ] || docker_env+=(-e "ENMAN_REPOSITORIES=$ENMAN_REPOSITORIES")
 [ -z "$DISTFILES" ] || docker_volumes+=(-v "$DISTFILES:/usr/portage/distfiles")
 [ -z "$ENTROPY_DOWNLOADED_PACKAGES" ] || docker_volumes+=(-v "$ENTROPY_DOWNLOADED_PACKAGES:/var/lib/entropy/client/packages")
 
