@@ -271,8 +271,9 @@ my $rt;
 if ($emerge_split_install) {
   for my $pack (@packages){
     my $tmp_rt=system("emerge $emerge_defaults_args -j $jobs $pack");
-    $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
+  #  $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
   }
+  $rt=0; #consider the build good anyway, like a "keep-going"
 }
 else {
   $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
