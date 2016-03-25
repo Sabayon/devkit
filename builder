@@ -23,6 +23,7 @@ my $dep_scan_depth = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
 my $skip_portage_sync = $ENV{SKIP_PORTAGE_SYNC} // 0;
 my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL}   // 0;
 my $webrsync = $ENV{WEBRSYNC} // 0;
+my $enman_repositories = $ENV{ENMAN_REPOSITORIES};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -221,6 +222,10 @@ if ($use_equo  && $entropy_repository eq "weekly" ) {
 }
 
 if ($use_equo) {
+  if ($enman_repositories and $enman_repositories ne "") {
+    my @enman_toadd=split(/ /,$enman_repositories);
+    system("enman add $_") for @enman_toadd;
+  }
   system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
   system("equo up && equo u")
 }
