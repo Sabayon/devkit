@@ -77,6 +77,6 @@ fi
 
 echo "Spawning the package builder container for '$@'."
 echo ""
-echo "docker run $DOCKER_OPTS ${docker_env[@]} ${docker_volumes[@]} $DOCKER_IMAGE $@"
+#echo "docker run $DOCKER_OPTS ${docker_env[@]} ${docker_volumes[@]} $DOCKER_IMAGE $@"
 
 docker run $DOCKER_OPTS "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE $@
