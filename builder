@@ -241,6 +241,13 @@ if ($use_equo) {
     my @Installed_Packages = qx/equo q list installed --quiet/;
     my @Available_Packages = available_packages();
     chomp(@Installed_Packages);
+
+    my %installed_packs =
+      map { $_ => 1 } @Installed_Packages;
+
+    # Remove any already installed packages from the list of entropy packages to install in the build spec
+    @equo_install = grep { ! exists $installed_packs{$_} } @equo_install;
+
     foreach my $p (@packages) {
       say "[$p] Getting the package dependencies which aren't already installed on the system.. ";
         push( @packages_deps, calculate_missing( $p , $dep_scan_depth,\@Installed_Packages,\@Available_Packages) )
