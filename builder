@@ -24,6 +24,7 @@ my $skip_portage_sync = $ENV{SKIP_PORTAGE_SYNC} // 0;
 my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL}   // 0;
 my $webrsync = $ENV{WEBRSYNC} // 0;
 my $enman_repositories = $ENV{ENMAN_REPOSITORIES};
+my $prune_virtuals = $ENV{PRUNE_VIRTUALS} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -87,24 +88,27 @@ sub available_packages {
 sub calculate_missing {
     my $package = shift;
     my $depth = shift;
-
     my @Installed_Packages = @{+shift};
     my @Available_Packages = @{+shift};
+    my $prune_virtuals = shift;
 
     # Getting the package dependencies and the installed packages
     my @dependencies = package_deps( $package, $depth, 1 );
 
-    my %install_dependencies = map { $_ => 1 } @dependencies;
-    # Look for any virtuals and remove its immediate dependencies to avoid
-    # installing multiple conflicting packages one by one
-    my @virtual_deps;
-    for my $dep (@dependencies) {
-        push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
+    if ($prune_virtuals) {
+        say "[$package] Pruning dependencies of virtual packages";
+        my %install_dependencies = map { $_ => 1 } @dependencies;
+        # Look for any virtuals and remove its immediate dependencies to avoid
+        # installing multiple conflicting packages one by one
+        my @virtual_deps;
+        for my $dep (@dependencies) {
+            push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
+        }
+        for my $dep (@virtual_deps) {
+            $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
+        }
+        @dependencies = grep { $install_dependencies{$_} } @dependencies;
     }
-    for my $dep (@virtual_deps) {
-        $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
-    }
-    @dependencies = grep { $install_dependencies{$_} } @dependencies;
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
@@ -250,7 +254,7 @@ if ($use_equo) {
 
     foreach my $p (@packages) {
       say "[$p] Getting the package dependencies which aren't already installed on the system.. ";
-        push( @packages_deps, calculate_missing( $p , $dep_scan_depth,\@Installed_Packages,\@Available_Packages) )
+        push( @packages_deps, calculate_missing( $p , $dep_scan_depth,\@Installed_Packages,\@Available_Packages, $prune_virtuals) )
           if $equo_install_atoms;
         push( @packages_deps, package_deps( $p, $dep_scan_depth, 0 ) )
           if $equo_install_version;
