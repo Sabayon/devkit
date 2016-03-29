@@ -42,6 +42,13 @@ $ENV{LC_ALL} = "en_US.UTF-8";    #here be dragons
 # A barely print replacement
 sub say { print join( "\n", @_ ) . "\n"; }
 
+sub safe_call {
+    my $cmd    = shift;
+    my $rt     = system($cmd);
+    my $return = $rt >> 8;
+    exit($return) if ($rt);
+}
+
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
 sub package_deps {
     my $package = shift;
@@ -262,13 +269,13 @@ if ($use_equo) {
     @packages_deps = grep { defined() and length() } @packages_deps;   #cleaning
     say "", "[install] Those dependencies will be installed with equo :", @packages_deps, "";
     if ($equo_split_install) {
-        system("equo i --bdeps $_") for (@packages_deps,@equo_install);
+        safe_call("equo i --bdeps $_") for (@packages_deps,@equo_install);
         if (@equo_remove > 0){
           system("equo rm --nodeps $_") for (@equo_remove);
         }
     }
     else {
-        system("equo i --bdeps @packages_deps @equo_install") if ( @packages_deps > 0 or @equo_install > 0);
+        safe_call("equo i --bdeps @packages_deps @equo_install") if ( @packages_deps > 0 or @equo_install > 0);
         system("equo rm --nodeps @equo_remove") if (@equo_remove > 0);
     }
 }
