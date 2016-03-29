@@ -17,20 +17,25 @@ my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
 my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
 my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
-my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}   // "main"; # Can be weekly, main, testing
+my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
+  // "main";    # Can be weekly, main, testing
 my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
-my $dep_scan_depth = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
-my $skip_portage_sync = $ENV{SKIP_PORTAGE_SYNC} // 0;
-my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL}   // 0;
-my $webrsync = $ENV{WEBRSYNC} // 0;
-my $enman_repositories = $ENV{ENMAN_REPOSITORIES};
-my $prune_virtuals = $ENV{PRUNE_VIRTUALS} // 0;
+my $dep_scan_depth       = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
+my $skip_portage_sync    = $ENV{SKIP_PORTAGE_SYNC} // 0;
+my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL} // 0;
+my $webrsync             = $ENV{WEBRSYNC} // 0;
+my $enman_repositories   = $ENV{ENMAN_REPOSITORIES};
+my $prune_virtuals       = $ENV{PRUNE_VIRTUALS} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
 
 my @overlays;
 
-GetOptions( 'layman|overlay:s{,}' => \@overlays, 'equo|install:s{,}' => \@equo_install,'equorm|remove:s{,}' => \@equo_remove );
+GetOptions(
+    'layman|overlay:s{,}' => \@overlays,
+    'equo|install:s{,}'   => \@equo_install,
+    'equorm|remove:s{,}'  => \@equo_remove
+);
 
 if ( @ARGV == 0 ) {
     help();
@@ -52,26 +57,28 @@ sub safe_call {
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
 sub package_deps {
     my $package = shift;
-    my $depth   = shift // 1;  # defaults to 1 level of depthness of the tree
+    my $depth   = shift // 1;    # defaults to 1 level of depthness of the tree
     my $atom    = shift // 0;
 
-    # Since we expect this sub to be called multiple times with the same arguments, cache the results
+# Since we expect this sub to be called multiple times with the same arguments, cache the results
     state %cache;
     $cache_key = "${package}:${depth}:${atom}";
 
-    if ( ! exists $cache{$cache_key} ) {
-        @dependencies = qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
+    if ( !exists $cache{$cache_key} ) {
+        @dependencies =
+          qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
         chomp @dependencies;
 
-        # If an unversioned atom is given, equery returns results for all versions in the portage tree
-        # leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
-        # possible dependencies, which isn't perfectly accurate but should be good enough. For completely
-        # accurate results, pass in a versioned atom.
+# If an unversioned atom is given, equery returns results for all versions in the portage tree
+# leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
+# possible dependencies, which isn't perfectly accurate but should be good enough. For completely
+# accurate results, pass in a versioned atom.
         @dependencies = uniq(
-          sort
-          grep { $_ }
-          map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
-          @dependencies);
+            sort
+              grep { $_ }
+              map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
+              @dependencies
+        );
 
         $cache{$cache_key} = \@dependencies;
     }
@@ -93,11 +100,11 @@ sub available_packages {
 # Input: package (sys-fs/foobarfs)
 # Output: Array of packages to be installed, that aren't installed in a Sabayon machine
 sub calculate_missing {
-    my $package = shift;
-    my $depth = shift;
-    my @Installed_Packages = @{+shift};
-    my @Available_Packages = @{+shift};
-    my $prune_virtuals = shift;
+    my $package            = shift;
+    my $depth              = shift;
+    my @Installed_Packages = @{ +shift };
+    my @Available_Packages = @{ +shift };
+    my $prune_virtuals     = shift;
 
     # Getting the package dependencies and the installed packages
     my @dependencies = package_deps( $package, $depth, 1 );
@@ -105,11 +112,13 @@ sub calculate_missing {
     if ($prune_virtuals) {
         say "[$package] Pruning dependencies of virtual packages";
         my %install_dependencies = map { $_ => 1 } @dependencies;
+
         # Look for any virtuals and remove its immediate dependencies to avoid
         # installing multiple conflicting packages one by one
         my @virtual_deps;
         for my $dep (@dependencies) {
-            push(@virtual_deps, package_deps( $dep, 1, 1 )) if ( $dep =~ /^virtual\// );
+            push( @virtual_deps, package_deps( $dep, 1, 1 ) )
+              if ( $dep =~ /^virtual\// );
         }
         for my $dep (@virtual_deps) {
             $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
@@ -125,8 +134,9 @@ sub calculate_missing {
 # removing from packages the one that are already installed and keeping only the available in the entropy repositories
     my @to_install = grep( defined $available_packs{$_},
         uniq( grep( !defined $installed_packs{$_}, @dependencies ) ) );
-    @to_install=grep { length } @to_install;
-    say "[$package] packages that will be installed with equo: @to_install" if @to_install>0;
+    @to_install = grep { length } @to_install;
+    say "[$package] packages that will be installed with equo: @to_install"
+      if @to_install > 0;
 
     return @to_install;
 }
@@ -144,15 +154,14 @@ sub uniq {
 sub help {
     say "-> You should feed me with something", "", "Examples:", "",
       "\t$0 app-text/tree", "\t$0 plasma-meta --layman kde", "",
-      "\t$0 app-foo/foobar --equo foo-misc/foobar --equo net-foo/foobar --layman foo --layman bar foo",
+"\t$0 app-foo/foobar --equo foo-misc/foobar --equo net-foo/foobar --layman foo --layman bar foo",
       "**************************", "",
 "You can supply multiple overlays as well: $0 plasma-meta --layman kde plab",
       "The documentation is available at https://github.com/Sabayon/devkit",
       "";
 }
 
-say
-"****************************************************";
+say "****************************************************";
 
 if ( @overlays > 0 ) {
     say "Overlay(s) to add";
@@ -169,14 +178,11 @@ say "[*] Syncing configurations files, Layman and Portage";
 
 # Syncronizing portage configuration and adding overlays
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
-system(
-"cd /etc/portage/;git checkout master; git stash; git pull"
-);
+system( "cd /etc/portage/;git checkout master; git stash; git pull" );
 
-if (`uname -m` eq "x86_64\n"){
-  system(
-  "cd /etc/portage/;rm -rfv make.conf;ln -s make.conf.amd64 make.conf"
-  );
+if ( `uname -m` eq "x86_64\n" ) {
+    system(
+        "cd /etc/portage/;rm -rfv make.conf;ln -s make.conf.amd64 make.conf" );
 }
 
 system("echo 'y' | layman -f -a $_") for @overlays;
@@ -208,14 +214,16 @@ auto-sync = no' > /etc/portage/repos.conf/local.conf
 
 system("mkdir -p /usr/portage/distfiles/git3-src");
 
-unless($skip_portage_sync == 1){
-  # sync portage and overlays
-  system("layman -S");
-  if($webrsync == 1){
-   system("emerge-webrsync");
-  } else {
-   system("emerge --sync");
-  }
+unless ( $skip_portage_sync == 1 ) {
+
+    # sync portage and overlays
+    system("layman -S");
+    if ( $webrsync == 1 ) {
+        system("emerge-webrsync");
+    }
+    else {
+        system("emerge --sync");
+    }
 }
 
 # preparing for MOAR automation
@@ -223,22 +231,23 @@ qx|eselect profile set $profile|;
 qx{ls /usr/portage/licenses -1 | xargs -0 > /etc/entropy/packages/license.accept}
   ;    #HAHA
 
-if ($use_equo  && $entropy_repository eq "weekly" ) {
-  qx|equo repo disable sabayonlinux.org|;
-  qx|equo repo enable sabayon-weekly|;
-} elsif( $use_equo  &&  $entropy_repository eq "testing") {
-  qx|equo repo disable sabayon-weekly|;
-  qx|equo repo enable sabayonlinux.org|;
-  qx|equo repo enable sabayon-limbo|;
+if ( $use_equo && $entropy_repository eq "weekly" ) {
+    qx|equo repo disable sabayonlinux.org|;
+    qx|equo repo enable sabayon-weekly|;
+}
+elsif ( $use_equo && $entropy_repository eq "testing" ) {
+    qx|equo repo disable sabayon-weekly|;
+    qx|equo repo enable sabayonlinux.org|;
+    qx|equo repo enable sabayon-limbo|;
 }
 
 if ($use_equo) {
-  if ($enman_repositories and $enman_repositories ne "") {
-    my @enman_toadd=split(/ /,$enman_repositories);
-    system("enman add $_") for @enman_toadd;
-  }
-  system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
-  system("equo up && equo u")
+    if ( $enman_repositories and $enman_repositories ne "" ) {
+        my @enman_toadd = split( / /, $enman_repositories );
+        system("enman add $_") for @enman_toadd;
+    }
+    system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
+    system("equo up && equo u");
 }
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
@@ -256,45 +265,56 @@ if ($use_equo) {
     my %installed_packs =
       map { $_ => 1 } @Installed_Packages;
 
-    # Remove any already installed packages from the list of entropy packages to install in the build spec
-    @equo_install = grep { ! exists $installed_packs{$_} } @equo_install;
+# Remove any already installed packages from the list of entropy packages to install in the build spec
+    @equo_install = grep { !exists $installed_packs{$_} } @equo_install;
 
     foreach my $p (@packages) {
-      say "[$p] Getting the package dependencies which aren't already installed on the system.. ";
-        push( @packages_deps, calculate_missing( $p , $dep_scan_depth,\@Installed_Packages,\@Available_Packages, $prune_virtuals) )
-          if $equo_install_atoms;
+        say
+"[$p] Getting the package dependencies which aren't already installed on the system.. ";
+        push(
+            @packages_deps,
+            calculate_missing(
+                $p,                   $dep_scan_depth,
+                \@Installed_Packages, \@Available_Packages,
+                $prune_virtuals
+            )
+        ) if $equo_install_atoms;
         push( @packages_deps, package_deps( $p, $dep_scan_depth, 0 ) )
           if $equo_install_version;
     }
     @packages_deps = grep { defined() and length() } @packages_deps;   #cleaning
-    say "", "[install] Those dependencies will be installed with equo :", @packages_deps, "";
+    say "", "[install] Those dependencies will be installed with equo :",
+      @packages_deps, "";
     if ($equo_split_install) {
-        safe_call("equo i --bdeps $_") for (@packages_deps,@equo_install);
-        if (@equo_remove > 0){
-          system("equo rm --nodeps $_") for (@equo_remove);
+        safe_call("equo i --bdeps $_") for ( @packages_deps, @equo_install );
+        if ( @equo_remove > 0 ) {
+            system("equo rm --nodeps $_") for (@equo_remove);
         }
     }
     else {
-        safe_call("equo i --bdeps @packages_deps @equo_install") if ( @packages_deps > 0 or @equo_install > 0);
-        system("equo rm --nodeps @equo_remove") if (@equo_remove > 0);
+        safe_call("equo i --bdeps @packages_deps @equo_install")
+          if ( @packages_deps > 0 or @equo_install > 0 );
+        system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
     }
 }
 
 say "*** Ready to compile, finger crossed ***";
 
-system("emerge --info"); #always give detailed information about the building environment, helpful to debug
+system("emerge --info")
+  ; #always give detailed information about the building environment, helpful to debug
 
 my $rt;
 
 if ($emerge_split_install) {
-  for my $pack (@packages){
-    my $tmp_rt=system("emerge $emerge_defaults_args -j $jobs $pack");
-  #  $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
-  }
-  $rt=0; #consider the build good anyway, like a "keep-going"
+    for my $pack (@packages) {
+        my $tmp_rt = system("emerge $emerge_defaults_args -j $jobs $pack");
+
+#  $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
+    }
+    $rt = 0;    #consider the build good anyway, like a "keep-going"
 }
 else {
-  $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
+    $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
 }
 
 my $return = $rt >> 8;
