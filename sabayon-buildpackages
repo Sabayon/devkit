@@ -44,6 +44,8 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ENTROPY_DOWNLOADED_PACKAGES" ] || docker_volumes+=(-v "$ENTROPY_DOWNLOADED_PACKAGES:/var/lib/entropy/client/packages")
 [ -z "$DISTCC_HOSTS" ] || docker_env+=(-e "DISTCC_HOSTS=$DISTCC_HOSTS")
 [ -z "${PRUNE_VIRTUALS}" ] || docker_env+=(-e "PRUNE_VIRTUALS=$PRUNE_VIRTUALS")
+[ -z "$REPOSITORY_NAME" ] || docker_env+=(-e "REPOSITORY_NAME=$REPOSITORY_NAME")
+[ -z "$ENMAN_ADD_SELF" ] || docker_env+=(-e "ENMAN_ADD_SELF=$ENMAN_ADD_SELF")
 
 if [ -n "$REMOTE_OVERLAY" ]; then
   git clone "$REMOTE_OVERLAY" "$TEMPDIR"

@@ -26,6 +26,8 @@ my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL} // 0;
 my $webrsync             = $ENV{WEBRSYNC} // 0;
 my $enman_repositories   = $ENV{ENMAN_REPOSITORIES};
 my $prune_virtuals       = $ENV{PRUNE_VIRTUALS} // 0;
+my $repository_name      = $ENV{REPOSITORY_NAME};
+my $enman_add_self       = $ENV{ENMAN_ADD_SELF} // 1;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -178,11 +180,11 @@ say "[*] Syncing configurations files, Layman and Portage";
 
 # Syncronizing portage configuration and adding overlays
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
-system( "cd /etc/portage/;git checkout master; git stash; git pull" );
+system("cd /etc/portage/;git checkout master; git stash; git pull");
 
 if ( `uname -m` eq "x86_64\n" ) {
     system(
-        "cd /etc/portage/;rm -rfv make.conf;ln -s make.conf.amd64 make.conf" );
+        "cd /etc/portage/;rm -rfv make.conf;ln -s make.conf.amd64 make.conf");
 }
 
 system("echo 'y' | layman -f -a $_") for @overlays;
@@ -244,8 +246,11 @@ elsif ( $use_equo && $entropy_repository eq "testing" ) {
 if ($use_equo) {
     if ( $enman_repositories and $enman_repositories ne "" ) {
         my @enman_toadd = split( / /, $enman_repositories );
-        system("enman add $_") for @enman_toadd;
+        safe_call("enman add $_") for @enman_toadd;
     }
+
+    system("enman add $repository_name")
+      if ( $enman_add_self and $repository_name and $repository_name ne "" );
     system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
     system("equo up && equo u");
 }
@@ -286,14 +291,17 @@ if ($use_equo) {
     say "", "[install] Those dependencies will be installed with equo :",
       @packages_deps, "";
     if ($equo_split_install) {
-        safe_call("equo i --bdeps $_") for ( @packages_deps, @equo_install ); ## bail out here, if installs fails. emerge will compile a LOT of stuff
+        safe_call("equo i --bdeps $_")
+          for ( @packages_deps, @equo_install )
+          ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         if ( @equo_remove > 0 ) {
             system("equo rm --nodeps $_") for (@equo_remove);
         }
     }
     else {
         safe_call("equo i --bdeps @packages_deps @equo_install")
-          if ( @packages_deps > 0 or @equo_install > 0 ); ## bail out here, if installs fails. emerge will compile a LOT of stuff
+          if ( @packages_deps > 0 or @equo_install > 0 )
+          ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
     }
 }
