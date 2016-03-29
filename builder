@@ -322,6 +322,7 @@ my $return = $rt >> 8;
 if ($preserved_rebuild) {
 
     system("emerge -j $jobs --buildpkg \@preserved-rebuild");
+    system("revdep-rebuild");
 
 }
 
