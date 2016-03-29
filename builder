@@ -311,6 +311,9 @@ say "*** Ready to compile, finger crossed ***";
 system("emerge --info")
   ; #always give detailed information about the building environment, helpful to debug
 
+say "Devkit version:";
+system("equo s -vq app-misc/sabayon-devkit");
+
 my $rt;
 
 if ($emerge_split_install) {
