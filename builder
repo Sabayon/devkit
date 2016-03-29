@@ -286,14 +286,14 @@ if ($use_equo) {
     say "", "[install] Those dependencies will be installed with equo :",
       @packages_deps, "";
     if ($equo_split_install) {
-        safe_call("equo i --bdeps $_") for ( @packages_deps, @equo_install );
+        safe_call("equo i --bdeps $_") for ( @packages_deps, @equo_install ); ## bail out here, if installs fails. emerge will compile a LOT of stuff
         if ( @equo_remove > 0 ) {
             system("equo rm --nodeps $_") for (@equo_remove);
         }
     }
     else {
         safe_call("equo i --bdeps @packages_deps @equo_install")
-          if ( @packages_deps > 0 or @equo_install > 0 );
+          if ( @packages_deps > 0 or @equo_install > 0 ); ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
     }
 }
