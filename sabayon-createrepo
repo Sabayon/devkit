@@ -61,11 +61,11 @@ else
   echo "Yes" | eit init --quick \$repo
 fi
 
-echo "Yes" | eit inject \${built_pkgs} || { echo "ouch unable to inject" && exit 3; }
-echo "Yes Yes Yes" | eit commit --quick
-
 [ -f "/etc/entropy/mykeys/key.pub" ] && [ -f "/etc/entropy/mykeys/private.key" ] &&\
 eit key import \$repo /etc/entropy/mykeys/private.key /etc/entropy/mykeys/key.pub && { eit key sign \$repo || true; }
+
+echo "Yes" | eit inject \${built_pkgs} || { echo "ouch unable to inject" && exit 3; }
+echo "Yes Yes Yes" | eit commit --quick
 
 eit push --quick --force
 
