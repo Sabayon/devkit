@@ -59,6 +59,7 @@ if [ -d "/sabayon/artifacts/standard" ]; then
   #eit sync \$repo
 else
   echo "Yes" | eit init --quick \$repo
+  eit push --quick --force
 fi
 
 [ -f "/etc/entropy/mykeys/key.pub" ] && [ -f "/etc/entropy/mykeys/private.key" ] && { eit key status \$repo; } \
