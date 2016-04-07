@@ -62,7 +62,7 @@ else
   eit push --quick --force
 fi
 
-[ -f "/etc/entropy/mykeys/key.pub" ] && [ -f "/etc/entropy/mykeys/private.key" ] && { eit key status \$repo; } && \
+[ -f "/etc/entropy/mykeys/key.pub" ] && [ -f "/etc/entropy/mykeys/private.key" ] && { ! eit key status \$repo; } && \
 eit key import \$repo /etc/entropy/mykeys/private.key /etc/entropy/mykeys/key.pub && { eit key sign \$repo || true; }
 
 echo "Yes" | eit inject \${built_pkgs} || { echo "ouch unable to inject" && exit 3; }
