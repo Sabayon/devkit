@@ -1,0 +1,6 @@
+#!/bin/bash
+
+sudo bash << EOF
+echo "Grabbing system informations, the url to share will happear in a minute"
+(echo 'lspci'; lspci; echo 'network'; ifconfig -a; echo 'drivers'; lsmod; find /lib/modules; echo 'kernel'; uname -a) | pastebunz
+EOF
