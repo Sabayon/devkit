@@ -28,6 +28,7 @@ my $enman_repositories   = $ENV{ENMAN_REPOSITORIES};
 my $prune_virtuals       = $ENV{PRUNE_VIRTUALS} // 0;
 my $repository_name      = $ENV{REPOSITORY_NAME};
 my $enman_add_self       = $ENV{ENMAN_ADD_SELF} // 1;
+my $build_injected_args  = $ENV{BUILD_INJECTED_ARGS};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -329,6 +330,12 @@ else {
 }
 
 my $return = $rt >> 8;
+
+# best effort -B
+if ($build_injected_args) {
+    system("emerge $emerge_defaults_args -j $jobs -B $_")
+      for ( split( / /, $build_injected_args ) );
+}
 
 if ($preserved_rebuild) {
 
