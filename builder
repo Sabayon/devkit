@@ -33,17 +33,15 @@ my $build_injected_args  = $ENV{BUILD_INJECTED_ARGS};
 my $make_conf = $ENV{MAKE_CONF};
 
 my @overlays;
-
+my $help=0;
 GetOptions(
     'layman|overlay:s{,}' => \@overlays,
     'equo|install:s{,}'   => \@equo_install,
-    'equorm|remove:s{,}'  => \@equo_remove
+    'equorm|remove:s{,}'  => \@equo_remove,
+    'help|?' => \$help
 );
 
-if ( @ARGV == 0 ) {
-    help();
-    die();
-}
+help() if $help;
 
 $ENV{LC_ALL} = "en_US.UTF-8";    #here be dragons
 
@@ -162,6 +160,7 @@ sub help {
 "You can supply multiple overlays as well: $0 plasma-meta --layman kde plab",
       "The documentation is available at https://github.com/Sabayon/devkit",
       "";
+    exit 0;
 }
 
 say "****************************************************";
