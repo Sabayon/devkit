@@ -29,16 +29,18 @@ my $prune_virtuals       = $ENV{PRUNE_VIRTUALS} // 0;
 my $repository_name      = $ENV{REPOSITORY_NAME};
 my $enman_add_self       = $ENV{ENMAN_ADD_SELF} // 1;
 my $build_injected_args  = $ENV{BUILD_INJECTED_ARGS};
+my $equo_masks           = $ENV{EQUO_MASKS};
+my $equo_unmasks         = $ENV{EQUO_UNMASKS};
 
 my $make_conf = $ENV{MAKE_CONF};
 
 my @overlays;
-my $help=0;
+my $help = 0;
 GetOptions(
     'layman|overlay:s{,}' => \@overlays,
     'equo|install:s{,}'   => \@equo_install,
     'equorm|remove:s{,}'  => \@equo_remove,
-    'help|?' => \$help
+    'help|?'              => \$help
 );
 
 help() if $help;
@@ -304,6 +306,16 @@ if ($use_equo) {
           ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
     }
+}
+
+# best effort -B
+if ($equo_masks) {
+    system("equo mask $_") for ( split( / /, $equo_masks ) );
+}
+
+# best effort -B
+if ($equo_unmasks) {
+    system("equo unmask $_") for ( split( / /, $equo_unmasks ) );
 }
 
 say "*** Ready to compile, finger crossed ***";

@@ -46,6 +46,8 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "${PRUNE_VIRTUALS}" ] || docker_env+=(-e "PRUNE_VIRTUALS=$PRUNE_VIRTUALS")
 [ -z "$REPOSITORY_NAME" ] || docker_env+=(-e "REPOSITORY_NAME=$REPOSITORY_NAME")
 [ -z "$ENMAN_ADD_SELF" ] || docker_env+=(-e "ENMAN_ADD_SELF=$ENMAN_ADD_SELF")
+[ -z "$EQUO_MASKS" ] || docker_env+=(-e "EQUO_MASKS=$EQUO_MASKS")
+[ -z "$EQUO_UNMASKS" ] || docker_env+=(-e "EQUO_MASKS=$EQUO_UNMASKS")
 
 if [ -n "$REMOTE_OVERLAY" ]; then
   git clone "$REMOTE_OVERLAY" "$TEMPDIR"
