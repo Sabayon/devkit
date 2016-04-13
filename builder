@@ -264,6 +264,17 @@ qx|echo 'ACCEPT_LICENSE="*"' >> /etc/portage/make.conf|;    #just plain evil
 my @packages = @ARGV;
 
 if ($use_equo) {
+
+    # best effort mask
+    if ($equo_masks) {
+        system("equo mask $_") for ( split( / /, $equo_masks ) );
+    }
+
+    # best effort unmask
+    if ($equo_unmasks) {
+        system("equo unmask $_") for ( split( / /, $equo_unmasks ) );
+    }
+
     my @packages_deps;
     my @Installed_Packages = qx/equo q list installed --quiet/;
     my @Available_Packages = available_packages();
@@ -306,16 +317,6 @@ if ($use_equo) {
           ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
     }
-}
-
-# best effort -B
-if ($equo_masks) {
-    system("equo mask $_") for ( split( / /, $equo_masks ) );
-}
-
-# best effort -B
-if ($equo_unmasks) {
-    system("equo unmask $_") for ( split( / /, $equo_unmasks ) );
 }
 
 say "*** Ready to compile, finger crossed ***";
