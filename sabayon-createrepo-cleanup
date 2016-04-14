@@ -25,6 +25,8 @@ docker_volumes=(
             -v "$entropysrv:/etc/entropy/server.conf"
             -v "$PORTAGE_ARTIFACTS:/usr/portage/packages" )
 
+[ -z "$PUBKEY" ] || docker_volumes+=(-v "$PUBKEY:/etc/entropy/mykeys/key.pub")
+[ -z "$PRIVATEKEY" ] || docker_volumes+=(-v "$PRIVATEKEY:/etc/entropy/mykeys/private.key")
 
 check_docker_requirements
 
@@ -45,6 +47,9 @@ if [ -d "/sabayon/artifacts/standard" ]; then
 else
   echo "ouch no repository there" && exit 3;
 fi
+
+[ -f "/etc/entropy/mykeys/key.pub" ] && [ -f "/etc/entropy/mykeys/private.key" ] && { ! eit key status \$repo; } && \
+eit key import \$repo /etc/entropy/mykeys/private.key /etc/entropy/mykeys/key.pub && { eit key sign \$repo || true; } && { echo "=== Repository key imported successfully ==="; }
 
 eit clean --quick || { echo "ouch unable to remove" && exit 3; }
 eit vacuum --quick || { echo "ouch unable to remove" && exit 3; }
