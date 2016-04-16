@@ -57,6 +57,13 @@ sub safe_call {
     exit($return) if ($rt);
 }
 
+sub append_to_file(){
+  my ($file_name,$line) = @_;
+  open(my $fh, '>>', $file_name) or die "Could not open file '$filename' $!";
+  print $fh $line."\n";
+  close $fh;
+}
+
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
 sub package_deps {
     my $package = shift;
@@ -267,12 +274,12 @@ if ($use_equo) {
 
     # best effort mask
     if ($equo_masks) {
-        system("equo mask $_") for ( split( / /, $equo_masks ) );
+        append_to_file("/etc/entropy/packages/packages.mask", $_) for ( split( / /, $equo_masks ) );
     }
 
     # best effort unmask
     if ($equo_unmasks) {
-        system("equo unmask $_") for ( split( / /, $equo_unmasks ) );
+        append_to_file("/etc/entropy/packages/packages.unmask", $_) for ( split( / /, $equo_unmasks ) );
     }
 
     my @packages_deps;
