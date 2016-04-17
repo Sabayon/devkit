@@ -274,12 +274,12 @@ if ($use_equo) {
 
     # best effort mask
     if ($equo_masks) {
-        append_to_file("/etc/entropy/packages/packages.mask", $_) for ( split( / /, $equo_masks ) );
+        append_to_file("/etc/entropy/packages/package.mask", $_) for ( split( / /, $equo_masks ) );
     }
 
     # best effort unmask
     if ($equo_unmasks) {
-        append_to_file("/etc/entropy/packages/packages.unmask", $_) for ( split( / /, $equo_unmasks ) );
+        append_to_file("/etc/entropy/packages/package.unmask", $_) for ( split( / /, $equo_unmasks ) );
     }
 
     my @packages_deps;
