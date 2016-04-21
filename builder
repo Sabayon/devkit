@@ -63,7 +63,7 @@ sub append_to_file {
     # Check that the package was not already there
     open my $fh_ro, '<:encoding(UTF-8)', $file_name or die;
     while ( my $line = <$fh_ro> ) {
-        return if $line eq $package . "\n" ;
+        return if $line eq $package . "\n";
     }
     close $fh_ro;
 
@@ -210,6 +210,10 @@ system("echo 'y' | layman -f -a $_") for @overlays;
 my $reponame = "LocalOverlay";
 
 # Setting up a local overlay if doesn't exists
+system(
+"rm -rf /usr/local/portage;cp -rf /usr/local/local_portage /usr/local/portage"
+);
+
 if ( !-f "/usr/local/portage/profiles/repo_name" ) {
     system("mkdir -p /usr/local/portage/{metadata,profiles}");
     system("echo 'LocalOverlay' > /usr/local/portage/profiles/repo_name");
@@ -224,7 +228,6 @@ else {
 }
 system("chown -R portage:portage /usr/local/portage");
 system("chmod -R 755 /usr/local/portage");
-
 
 qx{
 echo '[$reponame]
@@ -285,13 +288,13 @@ if ($use_equo) {
 
     # best effort mask
     if ($equo_masks) {
-        append_to_file ( "/etc/entropy/packages/package.mask", $_ )
+        append_to_file( "/etc/entropy/packages/package.mask", $_ )
           for ( split( / /, $equo_masks ) );
     }
 
     # best effort unmask
     if ($equo_unmasks) {
-        append_to_file ( "/etc/entropy/packages/package.unmask", $_ )
+        append_to_file( "/etc/entropy/packages/package.unmask", $_ )
           for ( split( / /, $equo_unmasks ) );
     }
 

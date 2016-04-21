@@ -60,7 +60,7 @@ function cleanup {
 
 trap cleanup EXIT
 
-[ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/portage")
+[ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/local_portage")
 
 if [ -e $MAKE_CONF ]; then
   echo "You specified a make.conf. I hope you know what are you doing"
