@@ -214,7 +214,6 @@ if ( !-f "/usr/local/portage/profiles/repo_name" ) {
     system("mkdir -p /usr/local/portage/{metadata,profiles}");
     system("echo 'LocalOverlay' > /usr/local/portage/profiles/repo_name");
     system("echo 'masters = gentoo' > /usr/local/portage/metadata/layout.conf");
-    system("chown -R portage:portage /usr/local/portage");
 }
 else {
     open FILE, "</usr/local/portage/profiles/repo_name";
@@ -223,6 +222,9 @@ else {
     chomp(@FILE);
     $reponame = $FILE[0];
 }
+system("chown -R portage:portage /usr/local/portage");
+system("chmod -R 755 /usr/local/portage");
+
 
 qx{
 echo '[$reponame]
