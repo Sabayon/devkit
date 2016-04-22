@@ -42,7 +42,7 @@ repo="\${REPOSITORY:-default}"
 
 if [ -d "/sabayon/artifacts/standard" ]; then
   eit unlock \$repo || true
-  eit pull --quick $repo || true
+  eit pull --quick \$repo || true
   #eit sync \$repo
 else
   echo "ouch no repository there" && exit 3;
