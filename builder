@@ -60,12 +60,15 @@ sub safe_call {
 sub append_to_file {
     my ( $file_name, $package ) = @_;
 
-    # Check that the package was not already there
-    open my $fh_ro, '<:encoding(UTF-8)', $file_name or die;
-    while ( my $line = <$fh_ro> ) {
-        return if $line eq $package . "\n";
+    if ( -f $file_name ) {
+
+        # Check that the package was not already there
+        open my $fh_ro, '<:encoding(UTF-8)', $file_name or die;
+        while ( my $line = <$fh_ro> ) {
+            return if $line eq $package . "\n";
+        }
+        close $fh_ro;
     }
-    close $fh_ro;
 
     open( my $fh_a, '>>', $file_name )
       or die "Could not open file '$filename' $!";
