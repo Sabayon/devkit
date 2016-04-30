@@ -11,7 +11,7 @@ sudo equo i sabayon-devkit
 ## Prerequisites
 
 * docker installed in the machine (`sudo equo i docker`), and the daemon started (`sudo systemctl start docker`)
-* if you don't want to run that as root, the user where are you running the script must be in the docker group (`sudo gpasswd -a $USER docker`)
+* if you don't want to run that as root, the user where are you running the script must be in the docker group (`sudo gpasswd -a $USER docker`), or granting permission to yourself adding your user to the sudoer file.
 
 Packages can be built in a clean environment with docker by running `sabayon-buildpackages`.
 
