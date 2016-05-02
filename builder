@@ -19,18 +19,19 @@ my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
 my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
   // "main";    # Can be weekly, main, testing
-my $artifacts_folder     = $ENV{ARTIFACTS_DIR};
-my $dep_scan_depth       = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
-my $skip_portage_sync    = $ENV{SKIP_PORTAGE_SYNC} // 0;
-my $emerge_split_install = $ENV{EMERGE_SPLIT_INSTALL} // 0;
-my $webrsync             = $ENV{WEBRSYNC} // 0;
-my $enman_repositories   = $ENV{ENMAN_REPOSITORIES};
-my $prune_virtuals       = $ENV{PRUNE_VIRTUALS} // 0;
-my $repository_name      = $ENV{REPOSITORY_NAME};
-my $enman_add_self       = $ENV{ENMAN_ADD_SELF} // 1;
-my $build_injected_args  = $ENV{BUILD_INJECTED_ARGS};
-my $equo_masks           = $ENV{EQUO_MASKS};
-my $equo_unmasks         = $ENV{EQUO_UNMASKS};
+my $artifacts_folder          = $ENV{ARTIFACTS_DIR};
+my $dep_scan_depth            = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
+my $skip_portage_sync         = $ENV{SKIP_PORTAGE_SYNC} // 0;
+my $emerge_split_install      = $ENV{EMERGE_SPLIT_INSTALL} // 0;
+my $webrsync                  = $ENV{WEBRSYNC} // 0;
+my $enman_repositories        = $ENV{ENMAN_REPOSITORIES};
+my $remove_enman_repositories = $ENV{REMOVE_ENMAN_REPOSITORIES};
+my $prune_virtuals            = $ENV{PRUNE_VIRTUALS} // 0;
+my $repository_name           = $ENV{REPOSITORY_NAME};
+my $enman_add_self            = $ENV{ENMAN_ADD_SELF} // 1;
+my $build_injected_args       = $ENV{BUILD_INJECTED_ARGS};
+my $equo_masks                = $ENV{EQUO_MASKS};
+my $equo_unmasks              = $ENV{EQUO_UNMASKS};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -63,7 +64,8 @@ sub append_to_file {
     if ( -f $file_name ) {
 
         # Check that the package was not already there
-        open my $fh_ro, '<:encoding(UTF-8)', $file_name or die;
+        open my $fh_ro, '<:encoding(UTF-8)', $file_name
+          or die("Cannot open: $file_name");
         while ( my $line = <$fh_ro> ) {
             return if $line eq $package . "\n";
         }
@@ -273,6 +275,11 @@ if ($use_equo) {
     if ( $enman_repositories and $enman_repositories ne "" ) {
         my @enman_toadd = split( / /, $enman_repositories );
         safe_call("enman add $_") for @enman_toadd;
+    }
+
+    if ( $remove_enman_repositories and $remove_enman_repositories ne "" ) {
+        my @enman_toremove = split( / /, $remove_enman_repositories );
+        system("enman remove $_") for @enman_toremove;
     }
 
     system("enman add $repository_name")
