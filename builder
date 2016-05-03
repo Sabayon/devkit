@@ -205,11 +205,6 @@ say "[*] Syncing configurations files, Layman and Portage";
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
 system("cd /etc/portage/;git checkout master; git stash; git pull");
 
-if ( `uname -m` eq "x86_64\n" ) {
-    system(
-        "cd /etc/portage/;rm -rfv make.conf;ln -s make.conf.amd64 make.conf");
-}
-
 system("echo 'y' | layman -f -a $_") for @overlays;
 
 my $reponame = "LocalOverlay";
