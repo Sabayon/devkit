@@ -49,6 +49,7 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ENMAN_ADD_SELF" ] || docker_env+=(-e "ENMAN_ADD_SELF=$ENMAN_ADD_SELF")
 [ -z "$EQUO_MASKS" ] || docker_env+=(-e "EQUO_MASKS=$EQUO_MASKS")
 [ -z "$EQUO_UNMASKS" ] || docker_env+=(-e "EQUO_UNMASKS=$EQUO_UNMASKS")
+[ -z "$EMERGE_REMOVE" ] || docker_env+=(-e "EMERGE_REMOVE=$EMERGE_REMOVE")
 
 if [ -n "$REMOTE_OVERLAY" ]; then
   git clone "$REMOTE_OVERLAY" "$TEMPDIR"

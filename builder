@@ -25,6 +25,7 @@ my $skip_portage_sync         = $ENV{SKIP_PORTAGE_SYNC} // 0;
 my $emerge_split_install      = $ENV{EMERGE_SPLIT_INSTALL} // 0;
 my $webrsync                  = $ENV{WEBRSYNC} // 0;
 my $enman_repositories        = $ENV{ENMAN_REPOSITORIES};
+my $emerge_remove             = $ENV{EMERGE_REMOVE};
 my $remove_enman_repositories = $ENV{REMOVE_ENMAN_REPOSITORIES};
 my $prune_virtuals            = $ENV{PRUNE_VIRTUALS} // 0;
 my $repository_name           = $ENV{REPOSITORY_NAME};
@@ -356,6 +357,10 @@ say "Devkit version:";
 system("equo s -vq app-misc/sabayon-devkit");
 
 my $rt;
+
+if ( $emerge_remove and $emerge_remove ne "" ) {
+    system("emerge -C $_") for split( / /, $emerge_remove );
+}
 
 if ($emerge_split_install) {
     for my $pack (@packages) {
