@@ -47,7 +47,8 @@ GetOptions(
 
 help() if $help;
 
-$ENV{LC_ALL} = "en_US.UTF-8";    #here be dragons
+$ENV{LC_ALL}             = "en_US.UTF-8";    #here be dragons
+$ENV{ETP_NONINTERACTIVE} = 1;
 
 # A barely print replacement
 sub say { print join( "\n", @_ ) . "\n"; }
