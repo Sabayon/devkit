@@ -82,10 +82,13 @@ sub append_to_file {
 
 sub add_portage_repository {
     my $repo = $_;
-    my $reponame = ( split( /\//, $repo ) )[-1];
+    my @reposplit = split( /\//, $repo );
+    my $reponame =
+      (@reposplit)[-2] . "-" . (@reposplit)[-1];
     system("mkdir -p /etc/portage/repos.conf/")
       if ( !-d "/etc/portage/repos.conf/" );
-
+    system("emaint sync -r $reponame") && return
+      if ( -e "/etc/portage/repos.conf/$reponame.conf" );
     qx{
 echo '[$reponame]
 location = /usr/local/overlay/$reponame
