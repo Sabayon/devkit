@@ -9,7 +9,6 @@ OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/portage_artifacts/}"
 LOCAL_OVERLAY="${LOCAL_OVERLAY:-$SAB_WORKSPACE/local_overlay}"
 ENTROPY_REPOSITORY="${ENTROPY_REPOSITORY:-main}" # Can be weekly, main, testing
 DOCKER_OPTS="${DOCKER_OPTS:--ti --rm}"
-TEMPDIR=$(mktemp -d)
 
 . /sbin/sabayondevkit-functions.sh
 
