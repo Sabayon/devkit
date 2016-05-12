@@ -80,6 +80,23 @@ sub append_to_file {
     close $fh_a;
 }
 
+sub add_portage_repository {
+    my $repo = $_;
+    my $reponame = ( split( /\//, $repo ) )[-1];
+    system("mkdir -p /etc/portage/repos.conf/")
+      if ( !-d "/etc/portage/repos.conf/" );
+
+    qx{
+echo '[$reponame]
+location = /usr/local/overlay/$reponame
+sync-type = git
+sync-uri = git://$repo
+auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
+};    # Declaring the repo and giving priority
+
+    system("emaint sync -r $reponame");
+}
+
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
 sub package_deps {
     my $package = shift;
