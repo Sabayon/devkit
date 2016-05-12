@@ -33,6 +33,7 @@ my $enman_add_self            = $ENV{ENMAN_ADD_SELF} // 0;
 my $build_injected_args       = $ENV{BUILD_INJECTED_ARGS};
 my $equo_masks                = $ENV{EQUO_MASKS};
 my $equo_unmasks              = $ENV{EQUO_UNMASKS};
+my $remote_overlay              = $ENV{REMOTE_OVERLAY};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -258,6 +259,11 @@ masters = gentoo
 priority=9999
 auto-sync = no' > /etc/portage/repos.conf/local.conf
 };    # Declaring the repo and giving priority
+
+if ($remote_overlay and $remote_overlay ne "") {
+    add_portage_repository( $_ )
+      for ( split( / /, $remote_overlay ) );
+}
 
 system("mkdir -p /usr/portage/distfiles/git3-src");
 
