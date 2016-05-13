@@ -33,7 +33,7 @@ my $enman_add_self            = $ENV{ENMAN_ADD_SELF} // 0;
 my $build_injected_args       = $ENV{BUILD_INJECTED_ARGS};
 my $equo_masks                = $ENV{EQUO_MASKS};
 my $equo_unmasks              = $ENV{EQUO_UNMASKS};
-my $remote_overlay              = $ENV{REMOTE_OVERLAY};
+my $remote_overlay            = $ENV{REMOTE_OVERLAY};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -82,14 +82,15 @@ sub append_to_file {
 }
 
 sub add_portage_repository {
-    my $repo = $_;
+    my $repo      = $_[0];
     my @reposplit = split( /\//, $repo );
-    my $reponame =
-      (@reposplit)[-2] . "-" . (@reposplit)[-1];
+    my $reponame  = $reposplit[-2] . "-" . $reposplit[-1];
     system("mkdir -p /etc/portage/repos.conf/")
       if ( !-d "/etc/portage/repos.conf/" );
     system("emaint sync -r $reponame") && return
       if ( -e "/etc/portage/repos.conf/$reponame.conf" );
+
+    say "==== Adding $reponame ====";
     qx{
 echo '[$reponame]
 location = /usr/local/overlay/$reponame
@@ -260,9 +261,8 @@ priority=9999
 auto-sync = no' > /etc/portage/repos.conf/local.conf
 };    # Declaring the repo and giving priority
 
-if ($remote_overlay and $remote_overlay ne "") {
-    add_portage_repository( $_ )
-      for ( split( / /, $remote_overlay ) );
+if ( $remote_overlay and $remote_overlay ne "" ) {
+    add_portage_repository($_) for ( split( / /, $remote_overlay ) );
 }
 
 system("mkdir -p /usr/portage/distfiles/git3-src");
