@@ -95,7 +95,7 @@ sub add_portage_repository {
 echo '[$reponame]
 location = /usr/local/overlay/$reponame
 sync-type = git
-sync-uri = git://$repo
+sync-uri = $repo
 masters = gentoo
 auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
 };    # Declaring the repo and giving priority

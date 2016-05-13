@@ -92,6 +92,8 @@ you can override the Architecture folder in which files are placed specifying in
 - DOCKER_PULL_IMAGE -- tells the script to update the docker image before compiling, enable it with 1, disable with 0
 - OUTPUT_DIR -- optional, default to "portage_artifacts" in your current working directory, it is the path where emerge generated tbz2 are stored (absolute path)
 - LOCAL_OVERLAY -- optional, you can specify the path to your local overlay (absolute path)
+- REMOTE_OVERLAY -- optional, a space separated list of overlays that can be cloned with git.
+
  The arguments are the packages that you want compile, they can be also in the complete form *e.g. =foo-bar/misc-1.2*
 
 
