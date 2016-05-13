@@ -82,19 +82,23 @@ sub append_to_file {
 }
 
 sub add_portage_repository {
-    my $repo      = $_[0];
+    my $repo = $_[0];
+    my $sync_type = ( split( /\:/, $repo ) )[0];
+    $sync_type = "git"
+      if $repo =~ /github|bitbucket/
+      or $sync_type eq "https"
+      or $sync_type eq "http";
+    $sync_type = "svn" if $repo =~ /\/svn\//;
     my @reposplit = split( /\//, $repo );
-    my $reponame  = $reposplit[-2] . "-" . $reposplit[-1];
+    my $reponame = $reposplit[-2] . "-" . $reposplit[-1];
     system("mkdir -p /etc/portage/repos.conf/")
       if ( !-d "/etc/portage/repos.conf/" );
-    system("emaint sync -r $reponame") && return
-      if ( -e "/etc/portage/repos.conf/$reponame.conf" );
 
     say "==== Adding $reponame ====";
     qx{
 echo '[$reponame]
 location = /usr/local/overlay/$reponame
-sync-type = git
+sync-type = $sync_type
 sync-uri = $repo
 masters = gentoo
 auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
