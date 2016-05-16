@@ -89,7 +89,8 @@ sub add_portage_repository {
       or $sync_type eq "https"
       or $sync_type eq "http";
     $sync_type = "svn" if $repo =~ /\/svn\//;
-    my $reponame = ( split( /\//, $repo ))[-1];
+    my $reponame = ( split( /\//, $repo ) )[-1];
+    $reponame =~ s/\.|//g;
     system("mkdir -p /etc/portage/repos.conf/")
       if ( !-d "/etc/portage/repos.conf/" );
 
