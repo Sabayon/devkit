@@ -249,7 +249,7 @@ my $reponame = "LocalOverlay";
 # Setting up a local overlay if doesn't exists
 system(
 "rm -rf /usr/local/portage;cp -rf /usr/local/local_portage /usr/local/portage"
-);
+) if ( -d "/usr/local/local_portage" );
 
 if ( !-f "/usr/local/portage/profiles/repo_name" ) {
     system("mkdir -p /usr/local/portage/{metadata,profiles}");
