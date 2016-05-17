@@ -404,7 +404,7 @@ if ( $emerge_remove and $emerge_remove ne "" ) {
 
 if ($emerge_split_install) {
     for my $pack (@packages) {
-        say "==== Compiling $pack ====";
+        say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
         my $tmp_rt = system("emerge $emerge_defaults_args -j $jobs $pack");
 
 #  $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
