@@ -83,14 +83,23 @@ sub append_to_file {
 
 sub add_portage_repository {
     my $repo = $_[0];
-    my $sync_type = ( split( /\:/, $repo ) )[0];
-    $sync_type = "git"
-      if $repo =~ /github|bitbucket/
-      or $sync_type eq "https"
-      or $sync_type eq "http";
-    $sync_type = "svn" if $repo =~ /\/svn\//;
-    my $reponame = ( split( /\//, $repo ) )[-1];
-    $reponame =~ s/\.|//g;
+    my $reponame;
+    my $sync_type;
+    my @repodef = split( /\|/, $repo );
+    ( $reponame, $repo ) = @repodef if ( @repodef == 2 );
+    ( $reponame, $sync_type, $repo ) = @repodef if ( @repodef == 3 );
+
+    # try to detect sync-type
+    if ( !$sync_type ) {
+        $sync_type = ( split( /\:/, $repo ) )[0];
+        $sync_type = "git"
+          if $repo =~ /github|bitbucket/
+          or $sync_type eq "https"
+          or $sync_type eq "http";
+        $sync_type = "svn" if $repo =~ /\/svn\//;
+    }
+    $reponame = ( split( /\//, $repo ) )[-1] if !$reponame;
+    $reponame =~ s/\.|//g;    #clean
     system("mkdir -p /etc/portage/repos.conf/")
       if ( !-d "/etc/portage/repos.conf/" );
 
@@ -101,7 +110,7 @@ location = /usr/local/overlay/$reponame
 sync-type = $sync_type
 sync-uri = $repo
 auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
-};    # Declaring the repo and giving priority
+};                            # Declaring the repo and giving priority
 
     system("emaint sync -r $reponame");
 }
