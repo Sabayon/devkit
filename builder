@@ -27,6 +27,8 @@ my $webrsync                  = $ENV{WEBRSYNC} // 0;
 my $enman_repositories        = $ENV{ENMAN_REPOSITORIES};
 my $emerge_remove             = $ENV{EMERGE_REMOVE};
 my $remove_enman_repositories = $ENV{REMOVE_ENMAN_REPOSITORIES};
+my $remove_remote_overlay     = $ENV{REMOVE_REMOTE_OVERLAY};
+my $remove_layman_overlay     = $ENV{REMOVE_LAYMAN_OVERLAY};
 my $prune_virtuals            = $ENV{PRUNE_VIRTUALS} // 0;
 my $repository_name           = $ENV{REPOSITORY_NAME};
 my $enman_add_self            = $ENV{ENMAN_ADD_SELF} // 0;
@@ -276,6 +278,17 @@ auto-sync = no' > /etc/portage/repos.conf/local.conf
 
 if ( $remote_overlay and $remote_overlay ne "" ) {
     add_portage_repository($_) for ( split( / /, $remote_overlay ) );
+}
+
+if ( $remove_layman_overlay and $remove_layman_overlay ne "" ) {
+    say "===== Removing overlays: $remove_remote_overlay =====";
+
+    system("layman -d $_") for ( split( / /, $remove_layman_overlay ) );
+}
+if ( $remove_remote_overlay and $remove_remote_overlay ne "" ) {
+    say "===== Removing overlays: $remove_remote_overlay =====";
+    system( "rm -rfv /etc/portage/" . $_ . ".conf" )
+      for ( split( / /, $remote_overlay ) );
 }
 
 system("mkdir -p /usr/portage/distfiles/git3-src");
