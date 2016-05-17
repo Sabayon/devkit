@@ -50,6 +50,9 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$EQUO_UNMASKS" ] || docker_env+=(-e "EQUO_UNMASKS=$EQUO_UNMASKS")
 [ -z "$EMERGE_REMOVE" ] || docker_env+=(-e "EMERGE_REMOVE=$EMERGE_REMOVE")
 [ -z "$REMOTE_OVERLAY" ] || docker_env+=(-e "REMOTE_OVERLAY=$REMOTE_OVERLAY")
+[ -z "$REMOVE_LAYMAN_OVERLAY" ] || docker_env+=(-e "REMOVE_LAYMAN_OVERLAY=$REMOVE_LAYMAN_OVERLAY")
+[ -z "$REMOVE_REMOTE_OVERLAY" ] || docker_env+=(-e "REMOVE_REMOTE_OVERLAY=$REMOVE_REMOTE_OVERLAY")
+
 [ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/local_portage")
 
 if [ -e $MAKE_CONF ]; then
