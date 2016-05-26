@@ -52,6 +52,7 @@ help() if $help;
 
 $ENV{LC_ALL}             = "en_US.UTF-8";    #here be dragons
 $ENV{ETP_NONINTERACTIVE} = 1;
+$ENV{ACCEPT_LICENSE}     = "*"; # we can use wildcard since entropy 302
 
 # A barely print replacement
 sub say { print join( "\n", @_ ) . "\n"; }
@@ -307,8 +308,6 @@ unless ( $skip_portage_sync == 1 ) {
 
 # preparing for MOAR automation
 qx|eselect profile set $profile|;
-qx{ls /usr/portage/licenses -1 | xargs -0 > /etc/entropy/packages/license.accept}
-  ;    #HAHA
 
 if ( $use_equo && $entropy_repository eq "weekly" ) {
     qx|equo repo disable sabayonlinux.org|;
