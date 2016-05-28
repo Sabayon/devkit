@@ -11,7 +11,7 @@ die() { echo "$@" 1>&2 ; exit 1; }
 
 build() {
 local SEARCH=$1
-local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}
+local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --verbose --oneshot --nospinner --noreplace --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}
 for i in $(EIX_LIMIT=0 eix --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
   do
     echo "Building $i"
@@ -22,7 +22,7 @@ for i in $(EIX_LIMIT=0 eix --only-names --pure-packages "$SEARCH/" | xargs echo 
 
 build_installed() {
   local SEARCH=$1
-  local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --newuse --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}
+  local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}
 
   for i in $(EIX_LIMIT=0 eix -I --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
     do
