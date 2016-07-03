@@ -338,8 +338,6 @@ if ($use_equo) {
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
-qx|echo 'ACCEPT_LICENSE="*"' >> /etc/portage/make.conf|;    #just plain evil
-
 my @packages = @ARGV;
 
 if ($use_equo) {
