@@ -36,6 +36,7 @@ my $build_injected_args       = $ENV{BUILD_INJECTED_ARGS};
 my $equo_masks                = $ENV{EQUO_MASKS};
 my $equo_unmasks              = $ENV{EQUO_UNMASKS};
 my $remote_overlay            = $ENV{REMOTE_OVERLAY};
+my $repoman_check             = $ENV{QA_CHECKS} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -52,7 +53,7 @@ help() if $help;
 
 $ENV{LC_ALL}             = "en_US.UTF-8";    #here be dragons
 $ENV{ETP_NONINTERACTIVE} = 1;
-$ENV{ACCEPT_LICENSE}     = "*"; # we can use wildcard since entropy 302
+$ENV{ACCEPT_LICENSE} = "*";    # we can use wildcard since entropy 302
 
 # A barely print replacement
 sub say { print join( "\n", @_ ) . "\n"; }
@@ -320,6 +321,10 @@ elsif ( $use_equo && $entropy_repository eq "testing" ) {
 }
 
 if ($use_equo) {
+
+    say "Devkit version:";
+    system("equo s -vq app-misc/sabayon-devkit");
+
     if ( $enman_repositories and $enman_repositories ne "" ) {
         my @enman_toadd = split( / /, $enman_repositories );
         safe_call("enman add $_") for @enman_toadd;
@@ -338,7 +343,12 @@ if ($use_equo) {
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
-my @packages = @ARGV;
+
+my @packages          = @ARGV;
+my @injected_packages = ();
+if ($build_injected_args) {
+    @injected_packages = split( / /, $build_injected_args );
+}
 
 if ($use_equo) {
 
@@ -398,13 +408,15 @@ if ($use_equo) {
     }
 }
 
+say "*** Repoman checks ***";
+if ( $repoman_check == 1 ) {
+     say "*** QA checks for $_" && system("pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd") for ( @packages, @injected_packages );
+}
+
 say "*** Ready to compile, finger crossed ***";
 
 system("emerge --info")
   ; #always give detailed information about the building environment, helpful to debug
-
-say "Devkit version:";
-system("equo s -vq app-misc/sabayon-devkit");
 
 my $rt;
 
@@ -428,10 +440,7 @@ else {
 my $return = $rt >> 8;
 
 # best effort -B
-if ($build_injected_args) {
-    system("emerge $emerge_defaults_args -j $jobs -B $_")
-      for ( split( / /, $build_injected_args ) );
-}
+system("emerge $emerge_defaults_args -j $jobs -B $_") for (@injected_packages);
 
 if ($preserved_rebuild) {
 

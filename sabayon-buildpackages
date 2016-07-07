@@ -52,6 +52,7 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$REMOTE_OVERLAY" ] || docker_env+=(-e "REMOTE_OVERLAY=$REMOTE_OVERLAY")
 [ -z "$REMOVE_LAYMAN_OVERLAY" ] || docker_env+=(-e "REMOVE_LAYMAN_OVERLAY=$REMOVE_LAYMAN_OVERLAY")
 [ -z "$REMOVE_REMOTE_OVERLAY" ] || docker_env+=(-e "REMOVE_REMOTE_OVERLAY=$REMOVE_REMOTE_OVERLAY")
+[ -z "$QA_CHECKS" ] || docker_env+=(-e "QA_CHECKS=$QA_CHECKS")
 
 [ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/local_portage")
 
