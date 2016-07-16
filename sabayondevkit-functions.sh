@@ -4,7 +4,7 @@ check_docker_requirements(){
   if [ "$(id -u)" != "0" ]; then
     groups | grep -q docker || echo "--> If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker)"
   fi
-  ps aux | grep -q '[d]ocker' || echo "--> Be sure to have the docker daemon running (sudo systemctl start docker) of configure it to run on boot (sudo systemctl enable docker). Trying to start it anyway" && sudo systemctl start docker
+  ps aux | grep -q '[d]ocker' || echo "--> Be sure to have the docker daemon running (sudo systemctl start docker) of configure it to run on boot (sudo systemctl enable docker). Trying to start it anyway" && sudo systemctl start docker || true
 }
 
 die() { echo "$@" 1>&2 ; exit 1; }
