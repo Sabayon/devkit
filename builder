@@ -408,8 +408,8 @@ if ($use_equo) {
     }
 }
 
-say "*** Repoman checks ***";
 if ( $repoman_check == 1 ) {
+     say "*** Repoman checks ***";
      say "*** QA checks for $_" && system("pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd") for ( @packages, @injected_packages );
 }
 
