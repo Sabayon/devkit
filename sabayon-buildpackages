@@ -73,6 +73,7 @@ if [ -d "$SAB_WORKSPACE"/specs ]; then
   [ -e "$SAB_WORKSPACE"/specs/custom.use ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.use:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.use/99-custom.use")
   [ -e "$SAB_WORKSPACE"/specs/custom.env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env")
   [ -e "$SAB_WORKSPACE"/specs/custom.keywords ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.keywords:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.keywords/99-custom.keywords")
+  [ -d "$SAB_WORKSPACE"/specs/env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/env/:/opt/sabayon-build/conf/$SAB_ARCH/portage/env/")
 
 fi
 
