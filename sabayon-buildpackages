@@ -71,7 +71,7 @@ if [ -d "$SAB_WORKSPACE"/specs ]; then
   [ -e "$SAB_WORKSPACE"/specs/custom.mask ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.mask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.mask/99-custom.mask")
   [ -e "$SAB_WORKSPACE"/specs/custom.unmask ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.unmask:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.unmask/99-custom.unmask")
   [ -e "$SAB_WORKSPACE"/specs/custom.use ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.use:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.use/99-custom.use")
-  [ -e "$SAB_WORKSPACE"/specs/custom.env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env/99-custom.env")
+  [ -e "$SAB_WORKSPACE"/specs/custom.env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env")
   [ -e "$SAB_WORKSPACE"/specs/custom.keywords ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.keywords:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.keywords/99-custom.keywords")
 
 fi
