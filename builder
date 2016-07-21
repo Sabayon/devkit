@@ -411,10 +411,11 @@ if ($use_equo) {
 
 if ( $repoman_check == 1 ) {
     say "*** Repoman checks ***";
-    say "*** QA checks for $_"
-      && system(
-        "pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd")
-      for ( @packages, @injected_packages );
+    for ( @packages, @injected_packages ) {
+        say "*** QA checks for $_";
+        system(
+            "pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd");
+    }
 }
 
 say "*** Ready to compile, finger crossed ***";
