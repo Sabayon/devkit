@@ -35,6 +35,7 @@ my $enman_add_self            = $ENV{ENMAN_ADD_SELF} // 0;
 my $build_injected_args       = $ENV{BUILD_INJECTED_ARGS};
 my $equo_masks                = $ENV{EQUO_MASKS};
 my $equo_unmasks              = $ENV{EQUO_UNMASKS};
+my $equo_install_args         = $ENV{EQUO_INSTALL_ARGS} // "--multifetch=10";
 my $remote_overlay            = $ENV{REMOTE_OVERLAY};
 my $repoman_check             = $ENV{QA_CHECKS} // 0;
 
@@ -343,7 +344,6 @@ if ($use_equo) {
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
-
 my @packages          = @ARGV;
 my @injected_packages = ();
 if ($build_injected_args) {
@@ -393,7 +393,7 @@ if ($use_equo) {
     say "", "[install] Those dependencies will be installed with equo :",
       @packages_deps, "";
     if ($equo_split_install) {
-        safe_call("equo i --bdeps $_")
+        safe_call("equo i $equo_install_args --bdeps $_")
           for ( @packages_deps, @equo_install )
           ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         if ( @equo_remove > 0 ) {
@@ -401,7 +401,8 @@ if ($use_equo) {
         }
     }
     else {
-        safe_call("equo i --bdeps @packages_deps @equo_install")
+        safe_call(
+            "equo i $equo_install_args --bdeps @packages_deps @equo_install")
           if ( @packages_deps > 0 or @equo_install > 0 )
           ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
@@ -409,8 +410,11 @@ if ($use_equo) {
 }
 
 if ( $repoman_check == 1 ) {
-     say "*** Repoman checks ***";
-     say "*** QA checks for $_" && system("pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd") for ( @packages, @injected_packages );
+    say "*** Repoman checks ***";
+    say "*** QA checks for $_"
+      && system(
+        "pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd")
+      for ( @packages, @injected_packages );
 }
 
 say "*** Ready to compile, finger crossed ***";
