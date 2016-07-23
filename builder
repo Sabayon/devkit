@@ -248,9 +248,7 @@ say "[*] Syncing configurations files, Layman and Portage";
 # Syncronizing portage configuration and adding overlays
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
 
-my $remote_conf_portdir
-my $remote_portdir
-
+# If defined, fetch a remote /etc/portage
 if ($remote_conf_portdir ne "") {
   system("rm -rf /etc/portage");
   system("git clone $remote_conf_portdir /etc/portage");
@@ -260,6 +258,7 @@ if ($remote_conf_portdir ne "") {
   system("cd /etc/portage/;git checkout master; git stash; git pull");
 }
 
+# If defined, fetch a remote /usr/portage
 if ($remote_portdir ne "") {
   system("rm -rf /usr/portage");
   system("git clone $remote_portdir /usr/portage");
