@@ -38,6 +38,8 @@ my $equo_unmasks              = $ENV{EQUO_UNMASKS};
 my $equo_install_args         = $ENV{EQUO_INSTALL_ARGS} // "--multifetch=10";
 my $remote_overlay            = $ENV{REMOTE_OVERLAY};
 my $repoman_check             = $ENV{QA_CHECKS} // 0;
+my $remote_conf_portdir       = $ENV{REMOTE_CONF_PORTDIR};
+my $remote_portdir            = $ENV{REMOTE_PORTDIR};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -245,7 +247,25 @@ say "[*] Syncing configurations files, Layman and Portage";
 
 # Syncronizing portage configuration and adding overlays
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
-system("cd /etc/portage/;git checkout master; git stash; git pull");
+
+my $remote_conf_portdir
+my $remote_portdir
+
+if ($remote_conf_portdir ne "") {
+  system("rm -rf /etc/portage");
+  system("git clone $remote_conf_portdir /etc/portage");
+  system("chown -R portage:portage /etc/portage");
+  system("chmod -R ug+w,a+rX /etc/portage");
+} else {
+  system("cd /etc/portage/;git checkout master; git stash; git pull");
+}
+
+if ($remote_portdir ne "") {
+  system("rm -rf /usr/portage");
+  system("git clone $remote_portdir /usr/portage");
+  system("chown -R portage:portage /usr/portage");
+  system("chmod -R ug+w,a+rX /usr/portage");
+}
 
 system("echo 'y' | layman -f -a $_") for @overlays;
 
