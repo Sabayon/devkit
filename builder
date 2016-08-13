@@ -249,21 +249,22 @@ say "[*] Syncing configurations files, Layman and Portage";
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
 
 # If defined, fetch a remote /etc/portage
-if ($remote_conf_portdir ne "") {
-  system("rm -rf /etc/portage");
-  system("git clone $remote_conf_portdir /etc/portage");
-  system("chown -R portage:portage /etc/portage");
-  system("chmod -R ug+w,a+rX /etc/portage");
-} else {
-  system("cd /etc/portage/;git checkout master; git stash; git pull");
+if ( $remote_conf_portdir ne "" ) {
+    system("rm -rf /etc/portage");
+    system("git clone $remote_conf_portdir /etc/portage");
+    system("chown -R portage:portage /etc/portage");
+    system("chmod -R ug+w,a+rX /etc/portage");
+}
+else {
+    system("cd /etc/portage/;git checkout master; git stash; git pull");
 }
 
 # If defined, fetch a remote /usr/portage
-if ($remote_portdir ne "") {
-  system("rm -rf /usr/portage");
-  system("git clone $remote_portdir /usr/portage");
-  system("chown -R portage:portage /usr/portage");
-  system("chmod -R ug+w,a+rX /usr/portage");
+if ( $remote_portdir ne "" ) {
+    system("rm -rf /usr/portage");
+    system("git clone $remote_portdir /usr/portage");
+    system("chown -R portage:portage /usr/portage");
+    system("chmod -R ug+w,a+rX /usr/portage");
 }
 
 system("echo 'y' | layman -f -a $_") for @overlays;
@@ -363,10 +364,35 @@ if ($use_equo) {
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
+my $per_package_useflags;
 my @packages          = @ARGV;
 my @injected_packages = ();
 if ($build_injected_args) {
     @injected_packages = split( / /, $build_injected_args );
+}
+
+# Allow users to specify atoms as: media-tv/kodi[-alsa,avahi]
+if ($emerge_split_install)
+{    # For targets this will be available only if split_install is enabled
+    for my $i ( 0 .. $#packages ) {
+        if ( $packages[$i] =~ /\[(.*?)\]/ ) {
+            my $flags = $1;
+            $packages[$i] =~ s/\[.*?\]//g;
+            $per_package_useflags->{targets}->[$i] = [ +split( /,/, $flags ) ];
+        }
+    }
+}
+else {
+    map { $_ =~ s/\[.*?\]//g; $_; }
+      @packages
+      ; # Clean up [] if user didn't specified split_install, but specified a useflag combination
+}
+for my $i ( 0 .. $#injected_packages ) {
+    if ( $injected_packages[$i] =~ /\[(.*?)\]/ ) {
+        my $flags = $1;
+        $injected_packages[$i] =~ s/\[.*?\]//g;
+        $per_package_useflags->{injected_targets}->[$i] = [ +split( /,/, $1 ) ];
+    }
 }
 
 if ($use_equo) {
@@ -449,9 +475,24 @@ if ( $emerge_remove and $emerge_remove ne "" ) {
 }
 
 if ($emerge_split_install) {
+    my $package_counter = 0;
     for my $pack (@packages) {
+        my $tmp_rt;
         say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
-        my $tmp_rt = system("emerge $emerge_defaults_args -j $jobs $pack");
+        if ( defined $per_package_useflags->{targets}->[$package_counter]
+            and @{ $per_package_useflags->{targets}->[$package_counter] } > 0 )
+        {
+            $tmp_rt = system(
+                "USE=\""
+                  . join( " ",
+                    @{ $per_package_useflags->{targets}->[$package_counter] } )
+                  . "\" emerge $emerge_defaults_args -j $jobs $pack"
+            );
+        }
+        else {
+            $tmp_rt = system("emerge $emerge_defaults_args -j $jobs $pack");
+        }
+        $package_counter++;
 
 #  $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
     }
@@ -464,7 +505,31 @@ else {
 my $return = $rt >> 8;
 
 # best effort -B
-system("emerge $emerge_defaults_args -j $jobs -B $_") for (@injected_packages);
+my $package_counter = 0;
+for my $pack (@injected_packages) {
+    my $tmp_rt;
+    say "\n" x 2, "==== Compiling (build-only) $pack ====", "\n" x 2;
+    if ( defined $per_package_useflags->{injected_targets}->[$package_counter]
+        and @{ $per_package_useflags->{injected_targets}->[$package_counter] }
+        > 0 )
+    {
+        $tmp_rt = system(
+            "USE=\""
+              . join(
+                " ",
+                @{
+                    $per_package_useflags->{injected_targets}
+                      ->[$package_counter]
+                }
+              )
+              . "\" emerge $emerge_defaults_args -j $jobs -B $pack"
+        );
+    }
+    else {
+        $tmp_rt = system("emerge $emerge_defaults_args -j $jobs -B $pack");
+    }
+    $package_counter++;
+}
 
 if ($preserved_rebuild) {
 
