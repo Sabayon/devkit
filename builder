@@ -244,6 +244,9 @@ sub compile_packs {
         if ( defined $per_package_useflags->{$target}->[$package_counter]
             and @{ $per_package_useflags->{$target}->[$package_counter] } > 0 )
         {
+            say "USEFLAGS: "
+              . join( " ",
+                @{ $per_package_useflags->{$target}->[$package_counter] } );
             $tmp_rt = system(
                 "USE=\""
                   . join( " ",
@@ -414,8 +417,11 @@ my @packages          = @ARGV;
 my @injected_packages = ();
 if ($build_injected_args) {
     @injected_packages = split( / /, $build_injected_args );
-}
+    say "[*] Injected installs:";
 
+    say "\t* " . $_ for @injected_packages;
+
+}
 
 # Allow users to specify atoms as: media-tv/kodi[-alsa,avahi]
 if ($emerge_split_install)
