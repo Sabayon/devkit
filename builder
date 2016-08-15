@@ -15,7 +15,7 @@ $ENV{FEATURES} = $ENV{FEATURES}
 
 my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
-my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
+my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 1;
 my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
   // "main";    # Can be weekly, main, testing
@@ -219,6 +219,54 @@ sub uniq {
     keys %{ { map { $_ => 1 } @_ } };
 }
 
+sub detect_useflags
+{ # Detect useflags defined as [-alsa,avahi] in atom, and fill $hash within the $target sub-hash
+    my ( $target, $packages ) = @_;
+    my @packs = @{$packages};
+    for my $i ( 0 .. $#packs ) {
+        if ( $packages->[$i] =~ /\[(.*?)\]/ ) {
+            my $flags = $1;
+            $packages->[$i] =~ s/\[.*?\]//g;
+            $per_package_useflags->{$target}->[$i] = [ +split( /,/, $flags ) ];
+        }
+    }
+}
+
+sub compile_packs {
+    my ( $target, @packages ) = @_;
+    my $extra_arg;
+    $extra_arg = "-B" if $target eq "injected_targets";
+    my $package_counter = 0;
+    my $return;
+    for my $pack (@packages) {
+        my $tmp_rt;
+        say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
+        if ( defined $per_package_useflags->{$target}->[$package_counter]
+            and @{ $per_package_useflags->{$target}->[$package_counter] } > 0 )
+        {
+            say "USEFLAGS: "
+              . join( " ",
+                @{ $per_package_useflags->{$target}->[$package_counter] } );
+            $tmp_rt = system(
+                "USE=\""
+                  . join( " ",
+                    @{ $per_package_useflags->{$target}->[$package_counter] } )
+                  . "\" emerge $emerge_defaults_args -j $jobs $extra_arg $pack"
+            );
+        }
+        else {
+            $tmp_rt =
+              system("emerge $emerge_defaults_args -j $jobs $extra_arg $pack");
+        }
+        $package_counter++;
+
+        $return = $tmp_rt
+          if ( $? == -1 or $? & 127 or !$rt )
+          ;    # if one fails, the build should be considered failed!
+    }
+    return $return;
+}
+
 sub help {
     say "-> You should feed me with something", "", "Examples:", "",
       "\t$0 app-text/tree", "\t$0 plasma-meta --layman kde", "",
@@ -369,31 +417,23 @@ my @packages          = @ARGV;
 my @injected_packages = ();
 if ($build_injected_args) {
     @injected_packages = split( / /, $build_injected_args );
+    say "[*] Injected installs:";
+
+    say "\t* " . $_ for @injected_packages;
+
 }
 
 # Allow users to specify atoms as: media-tv/kodi[-alsa,avahi]
 if ($emerge_split_install)
 {    # For targets this will be available only if split_install is enabled
-    for my $i ( 0 .. $#packages ) {
-        if ( $packages[$i] =~ /\[(.*?)\]/ ) {
-            my $flags = $1;
-            $packages[$i] =~ s/\[.*?\]//g;
-            $per_package_useflags->{targets}->[$i] = [ +split( /,/, $flags ) ];
-        }
-    }
+    detect_useflags( "targets", \@packages );
 }
 else {
     map { $_ =~ s/\[.*?\]//g; $_; }
       @packages
       ; # Clean up [] if user didn't specified split_install, but specified a useflag combination
 }
-for my $i ( 0 .. $#injected_packages ) {
-    if ( $injected_packages[$i] =~ /\[(.*?)\]/ ) {
-        my $flags = $1;
-        $injected_packages[$i] =~ s/\[.*?\]//g;
-        $per_package_useflags->{injected_targets}->[$i] = [ +split( /,/, $1 ) ];
-    }
-}
+detect_useflags( "injected_targets", \@injected_packages );
 
 if ($use_equo) {
 
@@ -475,27 +515,7 @@ if ( $emerge_remove and $emerge_remove ne "" ) {
 }
 
 if ($emerge_split_install) {
-    my $package_counter = 0;
-    for my $pack (@packages) {
-        my $tmp_rt;
-        say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
-        if ( defined $per_package_useflags->{targets}->[$package_counter]
-            and @{ $per_package_useflags->{targets}->[$package_counter] } > 0 )
-        {
-            $tmp_rt = system(
-                "USE=\""
-                  . join( " ",
-                    @{ $per_package_useflags->{targets}->[$package_counter] } )
-                  . "\" emerge $emerge_defaults_args -j $jobs $pack"
-            );
-        }
-        else {
-            $tmp_rt = system("emerge $emerge_defaults_args -j $jobs $pack");
-        }
-        $package_counter++;
-
-#  $rt=$tmp_rt if ($? == -1 or $? & 127 or !$rt); # if one fails, the build should be considered failed!
-    }
+    compile_packs( "targets", @packages );
     $rt = 0;    #consider the build good anyway, like a "keep-going"
 }
 else {
@@ -505,31 +525,7 @@ else {
 my $return = $rt >> 8;
 
 # best effort -B
-my $package_counter = 0;
-for my $pack (@injected_packages) {
-    my $tmp_rt;
-    say "\n" x 2, "==== Compiling (build-only) $pack ====", "\n" x 2;
-    if ( defined $per_package_useflags->{injected_targets}->[$package_counter]
-        and @{ $per_package_useflags->{injected_targets}->[$package_counter] }
-        > 0 )
-    {
-        $tmp_rt = system(
-            "USE=\""
-              . join(
-                " ",
-                @{
-                    $per_package_useflags->{injected_targets}
-                      ->[$package_counter]
-                }
-              )
-              . "\" emerge $emerge_defaults_args -j $jobs -B $pack"
-        );
-    }
-    else {
-        $tmp_rt = system("emerge $emerge_defaults_args -j $jobs -B $pack");
-    }
-    $package_counter++;
-}
+compile_packs( "injected_targets", @injected_packages );
 
 if ($preserved_rebuild) {
 
