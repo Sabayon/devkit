@@ -221,19 +221,19 @@ sub uniq {
 
 sub detect_useflags
 { # Detect useflags defined as [-alsa,avahi] in atom, and fill $hash within the $target sub-hash
-    my ( $hash, $target, $packages ) = @_;
+    my ( $target, $packages ) = @_;
     my @packs = @{$packages};
     for my $i ( 0 .. $#packs ) {
         if ( $packages->[$i] =~ /\[(.*?)\]/ ) {
             my $flags = $1;
             $packages->[$i] =~ s/\[.*?\]//g;
-            $hash->{$target}->[$i] = [ +split( /,/, $flags ) ];
+            $per_package_useflags->{$target}->[$i] = [ +split( /,/, $flags ) ];
         }
     }
 }
 
 sub compile_packs {
-    my ( $per_package_useflags, $target, @packages ) = @_;
+    my ( $target, @packages ) = @_;
     my $extra_arg;
     $extra_arg = "-B" if $target eq "injected_targets";
     my $package_counter = 0;
@@ -426,15 +426,14 @@ if ($build_injected_args) {
 # Allow users to specify atoms as: media-tv/kodi[-alsa,avahi]
 if ($emerge_split_install)
 {    # For targets this will be available only if split_install is enabled
-    detect_useflags( $per_package_useflags, "targets", \@packages );
+    detect_useflags( "targets", \@packages );
 }
 else {
     map { $_ =~ s/\[.*?\]//g; $_; }
       @packages
       ; # Clean up [] if user didn't specified split_install, but specified a useflag combination
 }
-detect_useflags( $per_package_useflags, "injected_targets",
-    \@injected_packages );
+detect_useflags( "injected_targets", \@injected_packages );
 
 if ($use_equo) {
 
@@ -516,7 +515,7 @@ if ( $emerge_remove and $emerge_remove ne "" ) {
 }
 
 if ($emerge_split_install) {
-    compile_packs( $per_package_useflags, "targets", @packages );
+    compile_packs( "targets", @packages );
     $rt = 0;    #consider the build good anyway, like a "keep-going"
 }
 else {
@@ -526,7 +525,7 @@ else {
 my $return = $rt >> 8;
 
 # best effort -B
-compile_packs( $per_package_useflags, "injected_targets", @injected_packages );
+compile_packs( "injected_targets", @injected_packages );
 
 if ($preserved_rebuild) {
 
