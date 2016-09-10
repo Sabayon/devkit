@@ -1,5 +1,6 @@
 #!/bin/bash
-
+# Maciej Mrozowski <reavertm@gentoo.org>
+ 
 # Returns colon separated list of linking dependencies
 get_link_deps()
 {
