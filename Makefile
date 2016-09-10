@@ -23,7 +23,10 @@ install:
 
 	install -d $(DESTDIR)/$(USBINDIR)
 	install -m 0755 builder $(DESTDIR)/$(USBINDIR)/
-	install -m 0755 depcheck $(DESTDIR)/$(USBINDIR)/
+	install -m 0755 depcheck $(DESTDIR)/$(UBINDIR)/
+	install -m 0755 dynlink-scanner $(DESTDIR)/$(UBINDIR)/
+	gcc try_dlopen.c -o try_dlopen -ldl
+	install -m 0755 try_dlopen $(DESTDIR)/$(UBINDIR)/
 
 	install -d $(DESTDIR)/$(UBINDIR)
 	install -m 0755 sabayon-* $(DESTDIR)/$(UBINDIR)/
