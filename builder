@@ -37,7 +37,7 @@ my $equo_masks                = $ENV{EQUO_MASKS};
 my $equo_unmasks              = $ENV{EQUO_UNMASKS};
 my $equo_install_args         = $ENV{EQUO_INSTALL_ARGS} // "--multifetch=10";
 my $remote_overlay            = $ENV{REMOTE_OVERLAY};
-my $repoman_check             = $ENV{QA_CHECKS} // 0;
+my $qualityassurance_checks   = $ENV{QA_CHECKS} // 0;
 my $remote_conf_portdir       = $ENV{REMOTE_CONF_PORTDIR};
 my $remote_portdir            = $ENV{REMOTE_PORTDIR};
 
@@ -494,7 +494,7 @@ if ($use_equo) {
     }
 }
 
-if ( $repoman_check == 1 ) {
+if ( $qualityassurance_checks == 1 ) {
     say "*** Repoman checks ***";
     for ( @packages, @injected_packages ) {
         say "*** QA checks for $_";
@@ -532,6 +532,15 @@ if ($preserved_rebuild) {
     system("emerge -j $jobs --buildpkg \@preserved-rebuild");
     system("revdep-rebuild");
 
+}
+
+if ( $qualityassurance_checks == 1 ) {
+    say "*** Missing dependencies checks ***";
+    for ( @packages ) {
+        say "*** DEPEND for $_";
+        system("dynlink-scanner $_");
+        system("depcheck $_");
+    }
 }
 
 # Copy files to artifacts folder
