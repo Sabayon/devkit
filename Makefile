@@ -23,6 +23,7 @@ install:
 
 	install -d $(DESTDIR)/$(USBINDIR)
 	install -m 0755 builder $(DESTDIR)/$(USBINDIR)/
+	install -m 0755 depcheck $(DESTDIR)/$(USBINDIR)/
 
 	install -d $(DESTDIR)/$(UBINDIR)
 	install -m 0755 sabayon-* $(DESTDIR)/$(UBINDIR)/

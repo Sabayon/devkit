@@ -1,0 +1,303 @@
+#!/bin/bash
+# PODNAME: depcheck
+#
+# Copyright (c) 2014 Michael Palimaka <kensington@gentoo.org>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# A tool to report both undeclared and potentially-unused runtime dependencies.
+#
+# Depends on app-misc/pax-utils, app-portage/portage-utils and
+# sys-apps/gentoo-functions.
+
+DEBUG=FALSE
+IGNORE_DEPS=( "sys-libs/glibc" "sys-devel/gcc" )
+IGNORE_LINKS=( "/lib64/libgcc_s.so.1" )
+PKG_DIR="/var/db/pkg/"
+
+. /lib/gentoo/functions.sh
+
+bold() {
+    echo $@
+    return
+    local bold=$(tput bold)
+    local normal=$(tput sgr0)
+    echo "${bold}${@}${normal}"
+}
+
+debug() {
+    if [ $DEBUG = TRUE ]; then
+        # write to stderr so as not to interfere with function returns
+        echo "$@" 1>&2
+    fi
+}
+
+# app-foo/bar-1.2.3-r1 -> app-foo/bar
+remove_atom_version() {
+    local atom=`qatom "${1}" | cut -d " " -f 1-2 | tr " " /`
+    echo $atom
+}
+
+virtualcheck() {
+    debug Checking if ${libowner_pn} is provided by a virtual
+    for virtual in $(qdepends --nocolor --name-only --${1} --query ${libowner_pn} | grep ^virtual/)
+    do
+        debug Checking if ${virtual} is in dependencies
+        local isvirtualdep=$(qdepends --${1} ${atom} | grep ${virtual})
+
+        if [ $? -eq 0 ]; then
+            used_virtuals+=( ${virtual} )
+            continue 2
+        fi
+    done
+
+    if [ "${1}" = "depend" ]; then
+        eerror "${obj} links to ${link}"
+    fi
+    eindent
+    eerror Missing ${1^^} on $(bold ${libowner_pn})
+    eoutdent
+    errors=1
+}
+
+check_atom() {
+
+    local errors=0
+    local atom=$1
+    local checked=()
+    local rdepends=()
+    local used_virtuals=()
+
+    local objects=`qlist -qo ${atom}`
+
+    if [ ! "${objects}" ]; then
+        einfo ${atom} does not have any objects installed, skipping...
+        echo
+        return
+    fi
+
+    if [ -z "${INSIDE_PORTAGE}" ]; then
+        einfo Checking ${atom} for undeclared dependencies
+        eindent
+    fi
+
+    local obj
+    for obj in $objects
+    do
+        debug "Checking ${obj}"
+
+        readelf -h ${obj} > /dev/null 2>&1
+
+        # can it have stuff linked to it?
+        if [ $? -ne 0 ]; then
+            debug "It can't have links, skipping"
+            continue
+        fi
+
+        local elf=`scanelf --format "#f%n" --nobanner --use-ldpath ${obj} 2>&1`
+        local links=`echo ${elf} | tr "," " "`
+
+        # get a list of everything that it's linked to
+        local link
+        for link in $links
+        do
+            local ignore
+            for ignore in "${IGNORE_LINKS[@]}"; do
+                if [ "${ignore}" = "${link}" ]; then
+                    debug "Ignoring ${link} due to blacklist"
+                    continue 2
+                fi
+            done
+
+            # only check a library once per atom for performance reasons
+            local check
+            for check in "${checked[@]}"; do
+                if [ "${check}" = "${link}" ]; then
+                    debug "Already checked ${link} for this atom, skipping"
+                    continue 2
+                fi
+            done
+
+            checked=( "${checked[@]}" "${link}" )
+
+            debug "Found ${link}"
+
+            local libowner=`qfile -vqC ${link} | uniq`
+
+            if [ ! "${libowner}" ]; then
+                ewarn "Warning: installed file ${obj} is linked to ${link} which is not owned by any installed atom."
+                continue
+            fi
+
+            debug "Owning package for ${link} is ${libowner}"
+
+            local libowner_pn=$(remove_atom_version ${libowner})
+            local my_pn=$(remove_atom_version ${atom})
+
+            rdepends+=( "${libowner_pn}" )
+
+            if [ "${libowner_pn}" = "${my_pn}" ]; then
+                debug "Owning package is self, ignoring"
+                continue
+            fi
+
+            local ignorelib
+            for ignorelib in "${IGNORE_DEPS[@]}"
+            do
+                if [ "${libowner_pn}" = "${ignorelib}" ]; then
+                    debug "Ignoring objects belonging to ${ignorelib}"
+                    continue 2
+                fi
+            done
+
+            debug "Checking if ${libowner_pn} is in the [R]DEPEND list of ${atom}"
+
+            local isdep
+            isdep=`qdepends -d ${atom} | grep ${libowner_pn}`
+            if [ $? -ne 0 ]; then
+                virtualcheck depend
+            fi
+
+            local isrdep
+            isrdep=`qdepends -r ${atom} | grep ${libowner_pn}`
+            if [ $? -ne 0 ]; then
+                virtualcheck rdepend
+            fi
+
+
+        done
+
+    done
+
+    local ebuild_rdepends=()
+    for rdepend in $(qdepends --nocolor --quiet --rdepend ${atom} | sed -e "s/\[[^]]*\]//g" | cut -d : -f 2-)
+    do
+        if [[ ${rdepend} = !* ]] ; then
+            debug Skipping blocker: ${rdepend}
+            continue
+        elif [[ ${rdepend} = virtual/* ]] ; then
+            for virtual in "${used_virtuals[@]}"
+            do
+                if [[ ${virtual} == $(remove_atom_version ${rdepend}) ]]; then
+                    debug Skipping virtual: ${rdepend}
+                    continue 2
+                fi
+            done
+        fi
+        ebuild_rdepends+=( $(remove_atom_version $rdepend) )
+    done
+
+    debug "Ebuild RDEPENDS: ${ebuild_rdepends[@]}"
+    debug "Linked RDEPENDS: ${rdepends[@]}"
+
+    local suspect_rdepends=$(comm -13 <(echo ${rdepends[@]} | sed 's/ /\n/g' | sort -u) <(echo ${ebuild_rdepends[@]} | sed 's/ /\n/g' | sort -u))
+    if [ "${suspect_rdepends}" ]; then
+        ewarn "Suspect RDEPEND: $(bold ${suspect_rdepends})"
+    fi
+
+    if [ -z "${INSIDE_PORTAGE}" ]; then
+        eoutdent
+        if [ -n "${CAT}" ]; then
+            echo
+        fi
+    fi
+
+    return $errors
+
+}
+
+check_package() {
+
+    local package=$1
+    local atoms=`qlist -IcCS ${package} | tr ' ' '-' | cut -d : -f1`
+
+    debug Package ${package} own atoms: ${atoms}
+
+    if [ ! "${atoms}" ]; then
+        eerror ERROR: ${package} is not a valid atom
+        exit 1
+    fi
+
+    for atom in ${atoms}; do
+        check_atom ${atom}
+    done
+
+}
+
+check_category() {
+
+    local errors=0
+
+    for package in `ls "${PKG_DIR}/${1}"`; do
+
+        check_package "${1}/${package}"
+
+        if [ $? -ne 0 ]; then
+            errors=1
+        fi
+
+    done;
+
+    return $errors
+
+}
+
+BINNAME=`basename ${0}`
+if [ -z $1 ]; then
+    echo "Checks emerged package(s) for undeclared depedencies"
+    echo
+        echo "Usage: ${BINNAME} [ atom | -c category | -a ]"
+    echo
+        echo "Examples:"
+    echo "Check a single package: ${BINNAME} app-foo/bar-1.2.3"
+    echo "Check a category: ${BINNAME} -c app-foo"
+    echo "Check everything: ${BINNAME} -a"
+    exit 1
+fi
+
+# check a particular category
+if [ "$1" = "-c" ]; then
+
+    CAT=$2
+
+    if [ ! -d "${PKG_DIR}/${CAT}" ]; then
+        eerror ERROR: No packages from the category ${CAT} have been emerged yet
+        exit 1
+    fi
+
+    check_category $CAT
+
+# check everything
+elif [ "$1" = "-a" ]; then
+
+    for category in `ls ${PKG_DIR}`; do
+        check_category $category
+    done;
+
+else
+    check_package $1
+fi
+
+if [ $DEBUG = TRUE ]; then
+    if [ $? -eq 0 ]; then
+        einfo Checking complete, no errors found
+    else
+        eerror Checking complete, errors found
+    fi
+fi
