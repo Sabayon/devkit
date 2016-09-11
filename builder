@@ -123,17 +123,17 @@ auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
 }
 
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
+my %package_dep_cache;
 sub package_deps {
     my $package = shift;
     my $depth   = shift // 1;    # defaults to 1 level of depthness of the tree
     my $atom    = shift // 0;
 
 # Since we expect this sub to be called multiple times with the same arguments, cache the results
-    state %cache;
     $cache_key = "${package}:${depth}:${atom}";
 
-    if ( !exists $cache{$cache_key} ) {
-        @dependencies =
+    if ( !exists $package_dep_cache{$cache_key} ) {
+        my @dependencies =
           qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
         chomp @dependencies;
 
@@ -148,10 +148,10 @@ sub package_deps {
               @dependencies
         );
 
-        $cache{$cache_key} = \@dependencies;
+        $package_dep_cache{$cache_key} = \@dependencies;
     }
 
-    return @{ $cache{$cache_key} };
+    return @{ $package_dep_cache{$cache_key} };
 }
 
 #Input: nothing
@@ -178,18 +178,26 @@ sub calculate_missing {
     my @dependencies = package_deps( $package, $depth, 1 );
 
     if ($prune_virtuals) {
-        say "[$package] Pruning dependencies of virtual packages";
         my %install_dependencies = map { $_ => 1 } @dependencies;
 
         # Look for any virtuals and remove its immediate dependencies to avoid
         # installing multiple conflicting packages one by one
-        my @virtual_deps;
+        my @virtual_deps = ();
         for my $dep (@dependencies) {
-            push( @virtual_deps, package_deps( $dep, 1, 1 ) )
-              if ( $dep =~ /^virtual\// );
+            if ( $dep =~ /^virtual\// ) {
+                my @child_deps = package_deps($dep, 1, 1);
+                push( @virtual_deps, @child_deps );
+            }
         }
+
+        # Deduplicate the list
+        @virtual_deps = uniq(@virtual_deps);
+
+        # Prune the dependencies of the virtual packages from the dependencies list
         for my $dep (@virtual_deps) {
-            $install_dependencies{$dep} = 0 if ( $dep !~ /^virtual\// );
+            if ( $dep !~ /^virtual\// ) {
+                $install_dependencies{$dep} = 0;
+            }
         }
         @dependencies = grep { $install_dependencies{$_} } @dependencies;
     }
