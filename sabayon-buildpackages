@@ -76,11 +76,12 @@ if [ -d "$SAB_WORKSPACE"/specs ]; then
   [ -e "$SAB_WORKSPACE"/specs/custom.env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.env:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.env")
   [ -e "$SAB_WORKSPACE"/specs/custom.keywords ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/custom.keywords:/opt/sabayon-build/conf/$SAB_ARCH/portage/package.keywords/99-custom.keywords")
   [ -d "$SAB_WORKSPACE"/specs/env ] && docker_volumes+=(-v "$SAB_WORKSPACE/specs/env/:/opt/sabayon-build/conf/$SAB_ARCH/portage/env/")
+  [ -d "/vagrant" ] && docker_volumes+=(-v "/vagrant:/vagrant")
 
 fi
 
 echo "Spawning the package builder container for '$@'."
 echo ""
-#echo "docker run $DOCKER_OPTS ${docker_env[@]} ${docker_volumes[@]} $DOCKER_IMAGE $@"
+echo "docker run $DOCKER_OPTS \"${docker_env[@]}\" \"${docker_volumes[@]}\" $DOCKER_IMAGE $@"
 
 docker run $DOCKER_OPTS "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE $@
