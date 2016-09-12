@@ -385,7 +385,9 @@ unless ( $skip_portage_sync == 1 ) {
 }
 
 # preparing for MOAR automation
-qx|eselect profile set $profile|;
+say "Setting new profile to $profile" if defined $profile;
+qx|eselect profile set $profile| if defined $profile;
+system("eselect profile list") if defined $profile;
 
 if ( $use_equo && $entropy_repository eq "weekly" ) {
     qx|equo repo disable sabayonlinux.org|;
