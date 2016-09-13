@@ -211,6 +211,10 @@ sub calculate_missing {
     my @to_install = grep( defined $available_packs{$_},
         uniq( grep( !defined $installed_packs{$_}, @dependencies ) ) );
     @to_install = grep { length } @to_install;
+
+    # Strip out the target package from the dependency list
+    @to_install = grep { to_atom($_) ne to_atom($package) } @to_install;
+
     say "[$package] packages that will be installed with equo: @to_install"
       if @to_install > 0;
 
@@ -220,6 +224,8 @@ sub calculate_missing {
 # Input : complete gentoo package (sys-fs/foobarfs-1.9.2)
 # Output: atom form (sys-fs/foobarfs)
 sub atom { s/-[0-9]{1,}.*$//; }
+# Same again as a function
+sub to_atom { my $p=shift; $p =~ s/-[0-9]{1,}.*$//; return $p; }
 
 # Input: Array
 # Output: array with unique elements
