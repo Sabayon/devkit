@@ -322,6 +322,8 @@ if ( $remote_portdir ne "" ) {
     system("chown -R portage:portage /usr/portage");
     system("chmod -R ug+w,a+rX /usr/portage");
 }
+system("mkdir /var/lib/layman") if ( ! -d "/var/lib/layman" );
+system("touch /var/lib/layman/make.conf && layman-updater -R") if ( ! -e "/var/lib/layman/make.conf" );
 
 system("echo 'y' | layman -f -a $_") for @overlays;
 
