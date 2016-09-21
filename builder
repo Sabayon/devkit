@@ -15,7 +15,7 @@ $ENV{FEATURES} = $ENV{FEATURES}
 
 my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
-my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 1;
+my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
 my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
   // "main";    # Can be weekly, main, testing
