@@ -88,8 +88,8 @@ database-format = bz2
 # disabled-eapis = 1,2
 # expiration-based-scope = disable
 # nonfree-packages-directory-support = disable
-rss-feed = disable
-changelog = disable
+rss-feed = enable
+changelog = enable
 rss-name = packages.rss
 rss-base-url = http://packages.sabayon.org/?quicksearch=
 rss-website-url = http://www.sabayon.org/
