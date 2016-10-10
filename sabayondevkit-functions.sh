@@ -17,7 +17,7 @@ build_sync() {
     git stash
     git fetch --all
     git checkout master
-    git reset --heard origin/master
+    git reset --hard origin/master
   popd
 }
 
