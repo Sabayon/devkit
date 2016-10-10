@@ -14,7 +14,7 @@ Script for builder boxes maintenance.
 --obsolete       Upgrades ONLY the packages that are listed obsolete in eix-test-obsolete.
 --all            Tries to upgrade all package without any euristics
 --category       Tries to upgrade/install all the packages in the specified category
-                 e.g. sabayon-maint-helper "app-office"
+                 e.g. sabayon-maint-helper 'app-office'
 
 Some options could be set also as environment variables:
 EMERGE_DEFAULT_ARGS     Default emerge options
@@ -41,12 +41,10 @@ parse_args() {
          --installed)
             echo "Trying to upgrade all the installed packages"
             rebuild_all
-            shift
             ;;
          --obsolete)
             echo "Upgrading the packages that are marked as obsolete"
             build_obsolete
-            shift
             ;;
          --all)
             echo "Upgrading/Installing everything available to install"
@@ -55,6 +53,7 @@ parse_args() {
          --category)
             echo "Upgrading/Installing everything inside the '$2' category"
             build_category_installed "$2"
+            shift
             ;;
          --)
             help_msg
