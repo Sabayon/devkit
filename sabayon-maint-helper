@@ -81,7 +81,13 @@ main() {
 
   [ -z "$@" ] && help_msg && exit 1
 
-  parse_args "$@"
+  (
+    echo "Acquiring lock"
+    flock -x -w 10 200 || ( echo "Failed acquiring lock in 10 seconds" && exit 1 )
+
+    parse_args "$@"
+
+  ) 200>/var/lock/.repomaint
 
 }
 
