@@ -1,0 +1,89 @@
+#!/bin/bash
+set -e
+. /sbin/sabayondevkit-functions.sh
+
+help_msg() {
+
+   echo "
+ sabayon-maint-helper:
+
+Script for builder boxes maintenance.
+
+-h|--help        This message.
+--installed      Upgrades all the packages installed in the box.
+--obsolete       Upgrades ONLY the packages that are listed obsolete in eix-test-obsolete.
+--all            Tries to upgrade all package without any euristics
+--category       Tries to upgrade/install all the packages in the specified category
+                 e.g. sabayon-maint-helper "app-office"
+
+Some options could be set also as environment variables:
+EMERGE_DEFAULT_ARGS     Default emerge options
+
+NOTE: This script MUST be execute as root.
+"
+}
+
+
+parse_args() {
+
+   local short_opts="h"
+   local long_opts="help arch: host-arch: unprivileged stagingdir: image-descr: image:"
+
+   $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@"))
+
+   while [ $# -gt 0 ] ; do
+      case "$1" in
+
+         -h|--help)
+            help_msg
+            exit 1
+            ;;
+         --installed)
+            echo "Trying to upgrade all the installed packages"
+            rebuild_all
+            shift
+            ;;
+         --obsolete)
+            echo "Upgrading the packages that are marked as obsolete"
+            build_obsolete
+            shift
+            ;;
+         --all)
+            echo "Upgrading/Installing everything available to install"
+            build_all_availables
+            ;;
+         --category)
+            echo "Upgrading/Installing everything inside the '$2' category"
+            build_category_installed "$2"
+            ;;
+         --)
+            help_msg
+            exit 1
+            ;;
+         *)
+            echo "Invalid parameter $1."
+            exit 1
+            ;;
+
+      esac
+
+      shift
+   done
+
+   return 0
+}
+
+main() {
+
+  if [ "$(id -u)" != "0" ]; then
+     echo "This script must be run as root" 1>&2
+     exit 1
+  fi
+
+  [ -z "$@" ] && help_msg && exit 1
+
+  parse_args "$@"
+
+}
+
+main "$@"

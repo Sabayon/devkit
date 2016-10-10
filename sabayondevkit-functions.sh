@@ -9,46 +9,9 @@ check_docker_requirements(){
 
 die() { echo "$@" 1>&2 ; exit 1; }
 
-build() {
-local SEARCH=$1
-local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --verbose --oneshot --nospinner --noreplace --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}
-for i in $(EIX_LIMIT=0 eix --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
-  do
-    echo "Building $i"
-    emerge $EMERGE_DEFAULT_ARGS -o $i && \
-    emerge $EMERGE_DEFAULT_ARGS $i
-  done
-}
-
-build_installed() {
-  local SEARCH=$1
-  local EMERGE_DEFAULT_ARGS=${2:---accept-properties=-interactive --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg}
-
-  for i in $(EIX_LIMIT=0 eix -I --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
-    do
-      echo "Building $i"
-      emerge $EMERGE_DEFAULT_ARGS $i
-    done
-}
-
-build_all_availables() {
-for i in $(cat /usr/portage/profiles/categories | xargs echo | uniq);
-  do
-    build "$i/"
-  done
-}
-
-rebuild_all() {
-for i in $(cat /usr/portage/profiles/categories | xargs echo | uniq);
-  do
-    build_installed "$i/"
-  done
-}
-
 build_sync() {
-  emerge-webrsync || exit 1
-  emerge --sync
   layman -S
+  emerge --sync
   eix-update || exit 1
   pushd /opt/sabayon-build/
     git stash
@@ -56,4 +19,66 @@ build_sync() {
     git checkout master
     git reset --heard origin/master
   popd
+}
+
+build_category() {
+  local SEARCH=$1
+  build_sync
+  for i in $(EIX_LIMIT=0 eix --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
+    do
+      echo "Building $i"
+      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --verbose --oneshot --nospinner --noreplace --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i
+    done
+}
+
+build_obsolete() {
+  build_sync
+  for i in $(EIX_LIMIT=0 eix-test-obsolete | grep '\[U\]' | awk '{ print $2 }' | xargs echo | uniq);
+    do
+     echo "Build $i"
+     emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg --noreplace} $i
+    done
+}
+
+build_category_installed() {
+  local SEARCH=$1
+  build_sync
+  for i in $(EIX_LIMIT=0 eix -I --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
+    do
+      echo "Building $i"
+      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i
+    done
+}
+
+build_all_availables() {
+  for i in $(cat /usr/portage/profiles/categories | xargs echo | uniq);
+    do
+      build_category "$i/"
+    done
+}
+
+rebuild_all() {
+for i in $(cat /usr/portage/profiles/categories | xargs echo | uniq);
+  do
+    build_category_installed "$i/"
+  done
+}
+
+get_category() {
+  local CATEGORY=$1
+  local PACKS
+  for i in $(EIX_LIMIT=0 eix --only-names --pure-packages "$CATEGORY/" | xargs echo | uniq);
+    do
+      PACKS+="$i "
+    done
+    echo $PACKS
+}
+
+get_all_availables() {
+  local RES
+  for i in $(cat /usr/portage/profiles/categories | xargs echo | uniq);
+    do
+        RES+="$(get_category $i) "
+    done
+  echo $RES
 }
