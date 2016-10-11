@@ -36,7 +36,7 @@ build_obsolete() {
   for i in $(EIX_LIMIT=0 eix-test-obsolete | grep '\[U\]' | awk '{ print $2 }' | xargs echo | uniq);
     do
      echo "Build $i"
-     emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg --noreplace} $i
+     emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive -u --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg --noreplace} $i
     done
 }
 
@@ -46,7 +46,7 @@ build_category_installed() {
   for i in $(EIX_LIMIT=0 eix -I --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
     do
       echo "Building $i"
-      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i
+      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive -u --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i
     done
 }
 
