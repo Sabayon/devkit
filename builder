@@ -412,14 +412,24 @@ if ($use_equo) {
     say "Devkit version:";
     system("equo s -vq app-misc/sabayon-devkit");
 
+    my @installed_enman_repos = split(/\n/, chomp(system("enman list --installed -q")));
+
     if ( $enman_repositories and $enman_repositories ne "" ) {
         my @enman_toadd = split( / /, $enman_repositories );
-        safe_call("enman add $_") for @enman_toadd;
+        for my $enman_add (@enman_toadd) {
+            if ! grep ($enman_add, @installed_enman_repos) {
+                safe_call("enman add $_");
+            }
+        }
     }
 
     if ( $remove_enman_repositories and $remove_enman_repositories ne "" ) {
         my @enman_toremove = split( / /, $remove_enman_repositories );
-        system("enman remove $_") for @enman_toremove;
+        for my $enman_remove (@enman_toremove) {
+            if grep ($enman_remove, @installed_enman_repos) {
+                safe_call("enman remove $_");
+            }
+        }
     }
 
     system("enman add $repository_name")
