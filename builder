@@ -412,7 +412,9 @@ if ($use_equo) {
     say "Devkit version:";
     system("equo s -vq app-misc/sabayon-devkit");
 
-    my @installed_enman_repos = split(/\n/, chomp(system("enman list --installed -q")));
+    my $enman_list_output = qx|enman list --installed -q|;
+    chomp($enman_list_output);
+    my @installed_enman_repos = split(/\n/, $enman_list_output);
 
     if ( $enman_repositories and $enman_repositories ne "" ) {
         my @enman_toadd = split( / /, $enman_repositories );
