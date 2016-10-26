@@ -9,16 +9,16 @@ my $jobs              = $ENV{BUILDER_JOBS}      // 1;
 my $use_equo          = $ENV{USE_EQUO}          // 1;
 my $preserved_rebuild = $ENV{PRESERVED_REBUILD} // 0;
 my $emerge_defaults_args = $ENV{EMERGE_DEFAULTS_ARGS}
-  // "--accept-properties=-interactive --verbose --oneshot --complete-graph --buildpkg";
+    // "--accept-properties=-interactive --verbose --oneshot --complete-graph --buildpkg";
 $ENV{FEATURES} = $ENV{FEATURES}
-  // "parallel-fetch protect-owned compressdebug splitdebug -userpriv";
+    // "parallel-fetch protect-owned compressdebug splitdebug -userpriv";
 
 my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
 my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
 my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
-  // "main";    # Can be weekly, main, testing
+    // "main";    # Can be weekly, main, testing
 my $artifacts_folder          = $ENV{ARTIFACTS_DIR};
 my $dep_scan_depth            = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
 my $skip_portage_sync         = $ENV{SKIP_PORTAGE_SYNC} // 0;
@@ -75,7 +75,7 @@ sub append_to_file {
 
         # Check that the package was not already there
         open my $fh_ro, '<:encoding(UTF-8)', $file_name
-          or die("Cannot open: $file_name");
+            or die("Cannot open: $file_name");
         while ( my $line = <$fh_ro> ) {
             return if $line eq $package . "\n";
         }
@@ -83,7 +83,7 @@ sub append_to_file {
     }
 
     open( my $fh_a, '>>', $file_name )
-      or die "Could not open file '$filename' $!";
+        or die "Could not open file '$filename' $!";
     print $fh_a $package . "\n";
     close $fh_a;
 }
@@ -100,15 +100,15 @@ sub add_portage_repository {
     if ( !$sync_type ) {
         $sync_type = ( split( /\:/, $repo ) )[0];
         $sync_type = "git"
-          if $repo =~ /github|bitbucket/
-          or $sync_type eq "https"
-          or $sync_type eq "http";
+            if $repo =~ /github|bitbucket/
+            or $sync_type eq "https"
+            or $sync_type eq "http";
         $sync_type = "svn" if $repo =~ /\/svn\//;
     }
     $reponame = ( split( /\//, $repo ) )[-1] if !$reponame;
     $reponame =~ s/\.|//g;    #clean
     system("mkdir -p /etc/portage/repos.conf/")
-      if ( !-d "/etc/portage/repos.conf/" );
+        if ( !-d "/etc/portage/repos.conf/" );
 
     say "==== Adding $reponame ====";
     qx{
@@ -124,9 +124,10 @@ auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
 
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
 my %package_dep_cache;
+
 sub package_deps {
     my $package = shift;
-    my $depth   = shift // 1;    # defaults to 1 level of depthness of the tree
+    my $depth   = shift // 1;   # defaults to 1 level of depthness of the tree
     my $atom    = shift // 0;
 
 # Since we expect this sub to be called multiple times with the same arguments, cache the results
@@ -134,7 +135,7 @@ sub package_deps {
 
     if ( !exists $package_dep_cache{$cache_key} ) {
         my @dependencies =
-          qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
+            qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
         chomp @dependencies;
 
 # If an unversioned atom is given, equery returns results for all versions in the portage tree
@@ -143,9 +144,9 @@ sub package_deps {
 # accurate results, pass in a versioned atom.
         @dependencies = uniq(
             sort
-              grep { $_ }
-              map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
-              @dependencies
+                grep {$_}
+                map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
+                @dependencies
         );
 
         $package_dep_cache{$cache_key} = \@dependencies;
@@ -185,7 +186,7 @@ sub calculate_missing {
         my @virtual_deps = ();
         for my $dep (@dependencies) {
             if ( $dep =~ /^virtual\// ) {
-                my @child_deps = package_deps($dep, 1, 1);
+                my @child_deps = package_deps( $dep, 1, 1 );
                 push( @virtual_deps, @child_deps );
             }
         }
@@ -193,7 +194,7 @@ sub calculate_missing {
         # Deduplicate the list
         @virtual_deps = uniq(@virtual_deps);
 
-        # Prune the dependencies of the virtual packages from the dependencies list
+   # Prune the dependencies of the virtual packages from the dependencies list
         for my $dep (@virtual_deps) {
             if ( $dep !~ /^virtual\// ) {
                 $install_dependencies{$dep} = 0;
@@ -204,19 +205,19 @@ sub calculate_missing {
 
     #taking only the 4th column of output as key of the hashmap
     my %installed_packs =
-      map { $_ => 1 } @Installed_Packages;
+        map { $_ => 1 } @Installed_Packages;
     my %available_packs = map { $_ => 1 } @Available_Packages;
 
 # removing from packages the one that are already installed and keeping only the available in the entropy repositories
     my @to_install = grep( defined $available_packs{$_},
         uniq( grep( !defined $installed_packs{$_}, @dependencies ) ) );
-    @to_install = grep { length } @to_install;
+    @to_install = grep {length} @to_install;
 
     # Strip out the target package from the dependency list
     @to_install = grep { to_atom($_) ne to_atom($package) } @to_install;
 
     say "[$package] packages that will be installed with equo: @to_install"
-      if @to_install > 0;
+        if @to_install > 0;
 
     return @to_install;
 }
@@ -224,8 +225,9 @@ sub calculate_missing {
 # Input : complete gentoo package (sys-fs/foobarfs-1.9.2)
 # Output: atom form (sys-fs/foobarfs)
 sub atom { s/-[0-9]{1,}.*$//; }
+
 # Same again as a function
-sub to_atom { my $p=shift; $p =~ s/-[0-9]{1,}.*$//; return $p; }
+sub to_atom { my $p = shift; $p =~ s/-[0-9]{1,}.*$//; return $p; }
 
 # Input: Array
 # Output: array with unique elements
@@ -241,7 +243,8 @@ sub detect_useflags
         if ( $packages->[$i] =~ /\[(.*?)\]/ ) {
             my $flags = $1;
             $packages->[$i] =~ s/\[.*?\]//g;
-            $per_package_useflags->{$target}->[$i] = [ +split( /,/, $flags ) ];
+            $per_package_useflags->{$target}->[$i] =
+                [ +split( /,/, $flags ) ];
         }
     }
 }
@@ -256,39 +259,44 @@ sub compile_packs {
         my $tmp_rt;
         say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
         if ( defined $per_package_useflags->{$target}->[$package_counter]
-            and @{ $per_package_useflags->{$target}->[$package_counter] } > 0 )
+            and @{ $per_package_useflags->{$target}->[$package_counter] }
+            > 0 )
         {
             say "USEFLAGS: "
-              . join( " ",
+                . join( " ",
                 @{ $per_package_useflags->{$target}->[$package_counter] } );
             $tmp_rt = system(
                 "USE=\""
-                  . join( " ",
-                    @{ $per_package_useflags->{$target}->[$package_counter] } )
-                  . "\" emerge $emerge_defaults_args -j $jobs $extra_arg $pack"
+                    . join(
+                    " ",
+                    @{  $per_package_useflags->{$target}->[$package_counter]
+                    }
+                    )
+                    . "\" emerge $emerge_defaults_args -j $jobs $extra_arg $pack"
             );
         }
         else {
             $tmp_rt =
-              system("emerge $emerge_defaults_args -j $jobs $extra_arg $pack");
+                system(
+                "emerge $emerge_defaults_args -j $jobs $extra_arg $pack");
         }
         $package_counter++;
 
         $return = $tmp_rt
-          if ( $? == -1 or $? & 127 or !$rt )
-          ;    # if one fails, the build should be considered failed!
+            if ( $? == -1 or $? & 127 or !$rt )
+            ;    # if one fails, the build should be considered failed!
     }
     return $return;
 }
 
 sub help {
     say "-> You should feed me with something", "", "Examples:", "",
-      "\t$0 app-text/tree", "\t$0 plasma-meta --layman kde", "",
-"\t$0 app-foo/foobar --equo foo-misc/foobar --equo net-foo/foobar --layman foo --layman bar foo",
-      "**************************", "",
-"You can supply multiple overlays as well: $0 plasma-meta --layman kde plab",
-      "The documentation is available at https://github.com/Sabayon/devkit",
-      "";
+        "\t$0 app-text/tree", "\t$0 plasma-meta --layman kde", "",
+        "\t$0 app-foo/foobar --equo foo-misc/foobar --equo net-foo/foobar --layman foo --layman bar foo",
+        "**************************", "",
+        "You can supply multiple overlays as well: $0 plasma-meta --layman kde plab",
+        "The documentation is available at https://github.com/Sabayon/devkit",
+        "";
     exit 0;
 }
 
@@ -328,8 +336,9 @@ if ( $remote_portdir ne "" ) {
     system("chown -R portage:portage /usr/portage");
     system("chmod -R ug+w,a+rX /usr/portage");
 }
-system("mkdir /var/lib/layman") if ( ! -d "/var/lib/layman" );
-system("touch /var/lib/layman/make.conf && layman-updater -R") if ( ! -e "/var/lib/layman/make.conf" );
+system("mkdir /var/lib/layman") if ( !-d "/var/lib/layman" );
+system("touch /var/lib/layman/make.conf && layman-updater -R")
+    if ( !-e "/var/lib/layman/make.conf" );
 
 system("echo 'y' | layman -f -a $_") for @overlays;
 
@@ -337,13 +346,14 @@ my $reponame = "LocalOverlay";
 
 # Setting up a local overlay if doesn't exists
 system(
-"rm -rf /usr/local/portage;cp -rf /usr/local/local_portage /usr/local/portage"
+    "rm -rf /usr/local/portage;cp -rf /usr/local/local_portage /usr/local/portage"
 ) if ( -d "/usr/local/local_portage" );
 
 if ( !-f "/usr/local/portage/profiles/repo_name" ) {
     system("mkdir -p /usr/local/portage/{metadata,profiles}");
     system("echo 'LocalOverlay' > /usr/local/portage/profiles/repo_name");
-    system("echo 'masters = gentoo' > /usr/local/portage/metadata/layout.conf");
+    system(
+        "echo 'masters = gentoo' > /usr/local/portage/metadata/layout.conf");
 }
 else {
     open FILE, "</usr/local/portage/profiles/repo_name";
@@ -375,7 +385,7 @@ if ( $remove_layman_overlay and $remove_layman_overlay ne "" ) {
 if ( $remove_remote_overlay and $remove_remote_overlay ne "" ) {
     say "===== Removing overlays: $remove_remote_overlay =====";
     system( "rm -rfv /etc/portage/" . $_ . ".conf" )
-      for ( split( / /, $remote_overlay ) );
+        for ( split( / /, $remote_overlay ) );
 }
 
 system("mkdir -p /usr/portage/distfiles/git3-src");
@@ -394,8 +404,8 @@ unless ( $skip_portage_sync == 1 ) {
 
 # preparing for MOAR automation
 say "Setting new profile to $profile" if defined $profile;
-qx|eselect profile set $profile| if defined $profile;
-system("eselect profile list") if defined $profile;
+qx|eselect profile set $profile|      if defined $profile;
+system("eselect profile list")        if defined $profile;
 
 if ( $use_equo && $entropy_repository eq "weekly" ) {
     qx|equo repo disable sabayonlinux.org|;
@@ -414,12 +424,12 @@ if ($use_equo) {
 
     my $enman_list_output = qx|enman list --installed -q|;
     chomp($enman_list_output);
-    my @installed_enman_repos = split(/\n/, $enman_list_output);
+    my @installed_enman_repos = split( /\n/, $enman_list_output );
 
     if ( $enman_repositories and $enman_repositories ne "" ) {
         my @enman_toadd = split( / /, $enman_repositories );
         for my $enman_add (@enman_toadd) {
-            if ! grep ($enman_add, @installed_enman_repos) {
+            if ( !grep ( $enman_add, @installed_enman_repos ) ) {
                 safe_call("enman add $_");
             }
         }
@@ -428,14 +438,16 @@ if ($use_equo) {
     if ( $remove_enman_repositories and $remove_enman_repositories ne "" ) {
         my @enman_toremove = split( / /, $remove_enman_repositories );
         for my $enman_remove (@enman_toremove) {
-            if grep ($enman_remove, @installed_enman_repos) {
+            if ( grep ( $enman_remove, @installed_enman_repos ) ) {
                 safe_call("enman remove $_");
             }
         }
     }
 
     system("enman add $repository_name")
-      if ( $enman_add_self and $repository_name and $repository_name ne "" );
+        if ($enman_add_self
+        and $repository_name
+        and $repository_name ne "" );
     system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
     system("equo up && equo u");
 }
@@ -460,8 +472,8 @@ if ($emerge_split_install)
 }
 else {
     map { $_ =~ s/\[.*?\]//g; $_; }
-      @packages
-      ; # Clean up [] if user didn't specified split_install, but specified a useflag combination
+        @packages
+        ; # Clean up [] if user didn't specified split_install, but specified a useflag combination
 }
 detect_useflags( "injected_targets", \@injected_packages );
 
@@ -470,13 +482,13 @@ if ($use_equo) {
     # best effort mask
     if ($equo_masks) {
         append_to_file( "/etc/entropy/packages/package.mask", $_ )
-          for ( split( / /, $equo_masks ) );
+            for ( split( / /, $equo_masks ) );
     }
 
     # best effort unmask
     if ($equo_unmasks) {
         append_to_file( "/etc/entropy/packages/package.unmask", $_ )
-          for ( split( / /, $equo_unmasks ) );
+            for ( split( / /, $equo_unmasks ) );
     }
 
     my @packages_deps;
@@ -485,14 +497,14 @@ if ($use_equo) {
     chomp(@Installed_Packages);
 
     my %installed_packs =
-      map { $_ => 1 } @Installed_Packages;
+        map { $_ => 1 } @Installed_Packages;
 
 # Remove any already installed packages from the list of entropy packages to install in the build spec
     @equo_install = grep { !exists $installed_packs{$_} } @equo_install;
 
     foreach my $p (@packages) {
         say
-"[$p] Getting the package dependencies which aren't already installed on the system.. ";
+            "[$p] Getting the package dependencies which aren't already installed on the system.. ";
         push(
             @packages_deps,
             calculate_missing(
@@ -502,15 +514,15 @@ if ($use_equo) {
             )
         ) if $equo_install_atoms;
         push( @packages_deps, package_deps( $p, $dep_scan_depth, 0 ) )
-          if $equo_install_version;
+            if $equo_install_version;
     }
-    @packages_deps = grep { defined() and length() } @packages_deps;   #cleaning
+    @packages_deps = grep { defined() and length() } @packages_deps; #cleaning
     say "", "[install] Those dependencies will be installed with equo :",
-      @packages_deps, "";
+        @packages_deps, "";
     if ($equo_split_install) {
         safe_call("equo i $equo_install_args --bdeps $_")
-          for ( @packages_deps, @equo_install )
-          ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
+            for ( @packages_deps, @equo_install )
+            ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         if ( @equo_remove > 0 ) {
             system("equo rm --nodeps $_") for (@equo_remove);
         }
@@ -518,8 +530,8 @@ if ($use_equo) {
     else {
         safe_call(
             "equo i $equo_install_args --bdeps @packages_deps @equo_install")
-          if ( @packages_deps > 0 or @equo_install > 0 )
-          ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
+            if ( @packages_deps > 0 or @equo_install > 0 )
+            ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
     }
 }
@@ -529,14 +541,15 @@ if ( $qualityassurance_checks == 1 ) {
     for ( @packages, @injected_packages ) {
         say "*** QA checks for $_";
         system(
-            "pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd");
+            "pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd"
+        );
     }
 }
 
 say "*** Ready to compile, finger crossed ***";
 
 system("emerge --info")
-  ; #always give detailed information about the building environment, helpful to debug
+    ; #always give detailed information about the building environment, helpful to debug
 
 my $rt;
 
@@ -566,7 +579,7 @@ if ($preserved_rebuild) {
 
 if ( $qualityassurance_checks == 1 ) {
     say "*** Missing dependencies checks ***";
-    for ( @packages ) {
+    for (@packages) {
         say "*** DEPEND for $_";
         system("dynlink-scanner $_");
         system("depcheck $_");
