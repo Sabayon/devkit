@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 check_docker_requirements(){
   if [ "$(id -u)" != "0" ]; then
     groups | grep -q docker || echo "--> If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker)"
@@ -12,12 +14,12 @@ die() { echo "$@" 1>&2 ; exit 1; }
 build_sync() {
   layman -S
   emerge --sync
-  eix-update || exit 1
+  eix-update
   pushd /opt/sabayon-build/
     git stash
-    git fetch --all
-    git checkout master
-    git reset --hard origin/master
+    git fetch --all || true
+    git checkout master || true
+    git reset --hard origin/master || true
   popd
 }
 
@@ -27,7 +29,7 @@ build_category() {
   for i in $(EIX_LIMIT=0 eix --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
     do
       echo "Building $i"
-      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --verbose --oneshot --nospinner --noreplace --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i
+      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive --verbose --oneshot --nospinner --noreplace --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i || true
     done
 }
 
@@ -36,7 +38,7 @@ build_obsolete() {
   for i in $(EIX_LIMIT=0 eix-test-obsolete | grep '\[U\]' | awk '{ print $2 }' | xargs echo | uniq);
     do
      echo "Build $i"
-     emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive -u --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg --noreplace} $i
+     emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive -u --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg --noreplace} $i || true
     done
 }
 
@@ -46,7 +48,7 @@ build_category_installed() {
   for i in $(EIX_LIMIT=0 eix -I --only-names --pure-packages "$SEARCH/" | xargs echo | uniq);
     do
       echo "Building $i"
-      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive -u --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i
+      emerge ${EMERGE_DEFAULT_ARGS:---accept-properties=-interactive -u --newuse --noreplace --changed-use --update --verbose --oneshot --nospinner --quiet-build=y --quiet-fail --fail-clean=y --complete-graph --buildpkg} $i || true
     done
 }
 
