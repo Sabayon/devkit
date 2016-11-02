@@ -8,7 +8,7 @@ MAKE_CONF="${MAKE_CONF:-$SAB_WORKSPACE/specs/make.conf}"
 OUTPUT_DIR="${OUTPUT_DIR:-$SAB_WORKSPACE/portage_artifacts/}"
 LOCAL_OVERLAY="${LOCAL_OVERLAY:-$SAB_WORKSPACE/local_overlay}"
 ENTROPY_REPOSITORY="${ENTROPY_REPOSITORY:-main}" # Can be weekly, main, testing
-DOCKER_OPTS="${DOCKER_OPTS:--ti --rm}"
+DOCKER_OPTS="${DOCKER_OPTS:--ti --rm --cap-add=SYS_PTRACE}"
 
 . /sbin/sabayondevkit-functions.sh
 
