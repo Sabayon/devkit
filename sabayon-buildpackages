@@ -56,6 +56,7 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$REMOTE_CONF_PORTDIR" ] || docker_env+=(-e "REMOTE_CONF_PORTDIR=$REMOTE_CONF_PORTDIR")
 [ -z "$REMOTE_PORTDIR" ] || docker_env+=(-e "REMOTE_PORTDIR=$REMOTE_PORTDIR")
 [ -z "$ETP_NOCACHE" ] || docker_env+=(-e "ETP_NOCACHE=$ETP_NOCACHE")
+[ -z "$PRETEND" ] || docker_env+=(-e "PRETEND=$PRETEND")
 [ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/local_portage")
 
 if [ -e $MAKE_CONF ]; then
