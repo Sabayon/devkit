@@ -40,7 +40,6 @@ my $remote_overlay            = $ENV{REMOTE_OVERLAY};
 my $qualityassurance_checks   = $ENV{QA_CHECKS} // 0;
 my $remote_conf_portdir       = $ENV{REMOTE_CONF_PORTDIR};
 my $remote_portdir            = $ENV{REMOTE_PORTDIR};
-my $pretend                   = $ENV{PRETEND} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -259,9 +258,9 @@ sub compile_packs {
     for my $pack (@packages) {
         my $tmp_rt;
         say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
-        if (    defined $per_package_useflags->{$target}->[$package_counter]
-            and @{ $per_package_useflags->{$target}->[$package_counter] } > 0
-            and !$pretend )
+        if ( defined $per_package_useflags->{$target}->[$package_counter]
+            and @{ $per_package_useflags->{$target}->[$package_counter] }
+            > 0 )
         {
             say "USEFLAGS: "
                 . join( " ",
@@ -276,13 +275,10 @@ sub compile_packs {
                     . "\" emerge $emerge_defaults_args -j $jobs $extra_arg $pack"
             );
         }
-        elsif ( !$pretend ) {
+        else {
             $tmp_rt =
                 system(
                 "emerge $emerge_defaults_args -j $jobs $extra_arg $pack");
-        }
-        else {
-            say "Skipping, PRETEND=1";
         }
         $package_counter++;
 
@@ -523,26 +519,20 @@ if ($use_equo) {
     @packages_deps = grep { defined() and length() } @packages_deps; #cleaning
     say "", "[install] Those dependencies will be installed with equo :",
         @packages_deps, "";
-    if ( $equo_split_install and !$pretend ) {
-
+    if ($equo_split_install) {
         safe_call("equo i $equo_install_args --bdeps $_")
             for ( @packages_deps, @equo_install )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
-
         if ( @equo_remove > 0 ) {
             system("equo rm --nodeps $_") for (@equo_remove);
         }
     }
-    elsif ( !$pretend ) {
+    else {
         safe_call(
             "equo i $equo_install_args --bdeps @packages_deps @equo_install")
             if ( @packages_deps > 0 or @equo_install > 0 )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
-
-    }
-    else {
-        say "Skipping, PRETEND=1";
     }
 }
 
@@ -571,11 +561,8 @@ if ($emerge_split_install) {
     compile_packs( "targets", @packages );
     $rt = 0;    #consider the build good anyway, like a "keep-going"
 }
-elsif ( !$pretend ) {
-    $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
-}
 else {
-    say "Skipping, PRETEND=1";
+    $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
 }
 
 my $return = $rt >> 8;
