@@ -40,6 +40,7 @@ my $remote_overlay            = $ENV{REMOTE_OVERLAY};
 my $qualityassurance_checks   = $ENV{QA_CHECKS} // 0;
 my $remote_conf_portdir       = $ENV{REMOTE_CONF_PORTDIR};
 my $remote_portdir            = $ENV{REMOTE_PORTDIR};
+my $pretend                   = $ENV{PRETEND} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -547,6 +548,12 @@ if ( $qualityassurance_checks == 1 ) {
 }
 
 say "*** Ready to compile, finger crossed ***";
+
+if($pretend){
+  say "----> PRETEND mode <----";
+  $equo_install_args.=" -p";
+  $emerge_defaults_args.=" -p"
+}
 
 system("emerge --info")
     ; #always give detailed information about the building environment, helpful to debug
