@@ -524,7 +524,8 @@ if ($use_equo) {
         safe_call("equo i $equo_install_args --bdeps $_")
             for ( @packages_deps, @equo_install )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
-        if ( @equo_remove > 0 ) {
+        if ( @equo_remove > 0 and !$pretend) {
+            say "Removing with equo: @equo_remove";
             system("equo rm --nodeps $_") for (@equo_remove);
         }
     }
@@ -560,7 +561,8 @@ system("emerge --info")
 
 my $rt;
 
-if ( $emerge_remove and $emerge_remove ne "" ) {
+if ( $emerge_remove and $emerge_remove ne "" and !$pretend) {
+    say "Removing with emerge: $emerge_remove";
     system("emerge -C $_") for split( / /, $emerge_remove );
 }
 
