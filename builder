@@ -579,7 +579,7 @@ my $return = $rt >> 8;
 # best effort -B
 compile_packs( "injected_targets", @injected_packages );
 
-if ($preserved_rebuild) {
+if ($preserved_rebuild and !$pretend) {
 
     system("emerge -j $jobs --buildpkg \@preserved-rebuild");
     system("revdep-rebuild");
