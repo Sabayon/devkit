@@ -316,6 +316,15 @@ say "\t* " . $_ for @ARGV;
 
 say "[*] Syncing configurations files, Layman and Portage";
 
+
+if($pretend){
+  say "[*] PRETEND enabled, no real action will be performed.";
+  say "    Bear in mind that in such way the list of packages";
+  say "    that emerge will try to compile will be bigger";
+  $equo_install_args.=" -p";
+  $emerge_defaults_args.=" -p"
+}
+
 # Syncronizing portage configuration and adding overlays
 system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
 
@@ -550,12 +559,6 @@ if ( $qualityassurance_checks == 1 ) {
 
 say "*** Ready to compile, finger crossed ***";
 
-if($pretend){
-  say "----> PRETEND mode <----";
-  $equo_install_args.=" -p";
-  $emerge_defaults_args.=" -p"
-}
-
 system("emerge --info")
     ; #always give detailed information about the building environment, helpful to debug
 
@@ -598,6 +601,6 @@ if ( $qualityassurance_checks == 1 ) {
 # Copy files to artifacts folder
 system(
     "mkdir -p $artifacts_folder;cp -rfv /usr/portage/packages $artifacts_folder"
-) if ( $artifacts_folder and !$return );
+) if ( $artifacts_folder and !$return and !$pretend);
 
 exit($return);
