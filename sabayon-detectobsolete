@@ -1,0 +1,69 @@
+#!/usr/bin/perl
+# mudler <mudler@sabayon.org>
+# this tool requires querypkg
+use Getopt::Long;
+use strict;
+use warnings;
+my $arch;
+my $verbose;
+my $overlay;
+GetOptions(
+    "arch=s"    => \$arch,
+    "overlay=s" => \$overlay,
+    "verbose"   => \$verbose
+) or die("Error in command line arguments\n");
+
+die("You should at least supply an overlay with --overlay") if !$overlay;
+
+# Input: Overlay absolute path
+# Output: array with package names (category/name)
+sub get_packages {
+    keys %{
+        {   map {
+                s/$overlay\/|\.ebuild//g;
+                $_ = join( '/', ( split( /\//, $_ ) )[ 0, 1 ] );
+                $_ => 1
+            } glob( $_[0] . "/*/*/*.ebuild" )
+        }
+    };
+}
+
+# Input: package (category/name)
+# Output: returns 1 if obsolete and can be removed
+sub obsolete_package($$) {
+    my $package = $_[0];
+    my $arch    = $_[1];
+    my $l_arch  = ( defined $arch and $arch ne "" ? "--arch $arch" : "" );
+    print "querypkg -q $l_arch $package --show spm_repo\n" if $verbose;
+    my @out = `querypkg -q $l_arch $package --show spm_repo`;
+    chomp(@out);
+    return 1 if "@out" eq "";
+    foreach my $l (@out) {
+        print " >> $l\n" if $verbose;
+        if ( $l =~ /$package.*\{spm_repo\:gent.*/ ) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+my @packages = get_packages($overlay);
+my @obsoletes;
+
+foreach my $p (@packages) {
+    print "[$p] Checking if there is a version in the repositories.... ";
+    print "\n" if $verbose;
+    if ( obsolete_package( $p, $arch ) ) {
+        print " OBSOLETE! \n";
+        push( @obsoletes, $p );
+    }
+    else {
+        print " ok  \n";
+    }
+}
+
+print "\n";
+print "Obsoletes found:\n\n";
+foreach my $obs (@obsoletes) {
+    print "$obs\n";
+}
