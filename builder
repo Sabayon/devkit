@@ -564,7 +564,7 @@ system("emerge --info")
 
 my $rt;
 
-if ( $emerge_remove and $emerge_remove ne "" and !$pretend) {
+if ( $emerge_remove and $emerge_remove ne "") {
     say "Removing with emerge: $emerge_remove";
     system("emerge -C $_") for split( / /, $emerge_remove );
 }
