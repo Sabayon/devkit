@@ -41,6 +41,8 @@ my $qualityassurance_checks   = $ENV{QA_CHECKS} // 0;
 my $remote_conf_portdir       = $ENV{REMOTE_CONF_PORTDIR};
 my $remote_portdir            = $ENV{REMOTE_PORTDIR};
 my $pretend                   = $ENV{PRETEND} // 0;
+my $obsoleted                 = $ENV{DETECT_OBSOLETE} // 0;
+my $target_overlay            = $ENV{TARGET_OVERLAY};
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -236,8 +238,9 @@ sub uniq {
     keys %{ { map { $_ => 1 } @_ } };
 }
 
-sub detect_useflags
-{ # Detect useflags defined as [-alsa,avahi] in atom, and fill $hash within the $target sub-hash
+# Detect useflags defined as [-alsa,avahi] in atom,
+# and fill $hash within the $target sub-hash
+sub detect_useflags {
     my ( $target, $packages ) = @_;
     my @packs = @{$packages};
     for my $i ( 0 .. $#packs ) {
@@ -316,13 +319,12 @@ say "\t* " . $_ for @ARGV;
 
 say "[*] Syncing configurations files, Layman and Portage";
 
-
-if($pretend){
-  say "[*] PRETEND enabled, no real action will be performed.";
-  say "    Bear in mind that in such way the list of packages";
-  say "    that emerge will try to compile will be bigger";
-  $equo_install_args.=" -p";
-  $emerge_defaults_args.=" -p"
+if ($pretend) {
+    say "[*] PRETEND enabled, no real action will be performed.";
+    say "    Bear in mind that in such way the list of packages";
+    say "    that emerge will try to compile will be bigger";
+    $equo_install_args    .= " -p";
+    $emerge_defaults_args .= " -p";
 }
 
 # Syncronizing portage configuration and adding overlays
@@ -533,7 +535,7 @@ if ($use_equo) {
         safe_call("equo i $equo_install_args --bdeps $_")
             for ( @packages_deps, @equo_install )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
-        if ( @equo_remove > 0 and !$pretend) {
+        if ( @equo_remove > 0 and !$pretend ) {
             say "Removing with equo: @equo_remove";
             system("equo rm --nodeps $_") for (@equo_remove);
         }
@@ -564,7 +566,7 @@ system("emerge --info")
 
 my $rt;
 
-if ( $emerge_remove and $emerge_remove ne "") {
+if ( $emerge_remove and $emerge_remove ne "" ) {
     say "Removing with emerge: $emerge_remove";
     system("emerge -C $_") for split( / /, $emerge_remove );
 }
@@ -582,7 +584,7 @@ my $return = $rt >> 8;
 # best effort -B
 compile_packs( "injected_targets", @injected_packages );
 
-if ($preserved_rebuild and !$pretend) {
+if ( $preserved_rebuild and !$pretend ) {
 
     system("emerge -j $jobs --buildpkg \@preserved-rebuild");
     system("revdep-rebuild");
@@ -598,9 +600,14 @@ if ( $qualityassurance_checks == 1 ) {
     }
 }
 
+if ( $obsoleted and $target_overlay ) {
+    say "*** Detecting obsoletes ***";
+    system("sabayon-detectobsolete --overlay ${target_overlay}");
+}
+
 # Copy files to artifacts folder
 system(
     "mkdir -p $artifacts_folder;cp -rfv /usr/portage/packages $artifacts_folder"
-) if ( $artifacts_folder and !$return and !$pretend);
+) if ( $artifacts_folder and !$return and !$pretend );
 
 exit($return);
