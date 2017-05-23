@@ -1,0 +1,20 @@
+#!/bin/sh
+# This code is licenced GPLv2 or newer.
+
+# An example hook script to prepare the commit log message.
+# Called by "git commit" with the name of the file that has the
+# commit message, followed by the description of the commit
+# message's source.  The hook's purpose is to edit the commit
+# message file.  If the hook fails with a non-zero status,
+# the commit is aborted.
+
+_out=$(git status -s | overlays-commit-msg.pl)
+_ver=$(git status -s | sed -rn 's/^[AR] *(.* -> )?.*-([^-]+)\.ebuild$/\2/p' | head -n 1)
+_bump=${_ver:+version bump to $_ver}
+
+case $2 in
+#message)
+#	sed -i -e "1s:^:[$_subdir/$_curdir] :" "$1" ;;
+"")
+	sed -i -e "1i[$_out] $_bump" "$1" ;;
+esac
