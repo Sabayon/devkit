@@ -549,16 +549,6 @@ if ($use_equo) {
     }
 }
 
-if ( $qualityassurance_checks == 1 ) {
-    say "*** Repoman checks ***";
-    for ( @packages, @injected_packages ) {
-        say "*** QA checks for $_";
-        system(
-            "pushd \$(dirname \$(equery which $_ 2>/dev/null)); repoman; popd"
-        );
-    }
-}
-
 say "*** Ready to compile, finger crossed ***";
 
 system("emerge --info")
@@ -592,11 +582,16 @@ if ( $preserved_rebuild and !$pretend ) {
 }
 
 if ( $qualityassurance_checks == 1 ) {
-    say "*** Missing dependencies checks ***";
-    for (@packages) {
-        say "*** DEPEND for $_";
-        system("dynlink-scanner $_");
-        system("depcheck $_");
+    say "*** Quality assurance ***";
+    foreach my $pn ( @packages, @injected_packages ) {
+        say ">> Running repoman on $pn";
+        system(
+            "pushd \$(dirname \$(equery which $pn 2>/dev/null)); repoman; popd"
+        );
+        $pn =~ s/\:\:.*//g;
+        say ">> Detecting missing dependencies for $pn";
+        system("dynlink-scanner $pn");
+        system("depcheck $pn");
     }
 }
 
