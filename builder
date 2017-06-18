@@ -3,6 +3,7 @@
 use Getopt::Long;
 use v5.10;
 no feature "say";
+use Storable 'dclone';
 
 my $profile           = $ENV{BUILDER_PROFILE}   // 3;
 my $jobs              = $ENV{BUILDER_JOBS}      // 1;
@@ -90,6 +91,8 @@ sub append_to_file {
     print $fh_a $package . "\n";
     close $fh_a;
 }
+
+sub parse_overlays { map{ $_ =~ s/.*?\:\://g; $_ } @{ dclone(\@_) }; }
 
 sub add_portage_repository {
     my $repo = $_[0];
@@ -305,6 +308,12 @@ sub help {
 }
 
 say "****************************************************";
+
+my @parsed_overlays = grep { $_ !~ /gentoo/i } parse_overlays(@ARGV);
+
+say "Detected overlays: @parsed_overlays" if @parsed_overlays;
+
+@overlays = uniq(@overlays,@parsed_overlays);
 
 if ( @overlays > 0 ) {
     say "Overlay(s) to add";
