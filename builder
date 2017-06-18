@@ -309,7 +309,10 @@ sub help {
 
 say "****************************************************";
 
-my @parsed_overlays = grep { $_ !~ /gentoo/i } parse_overlays(@ARGV);
+my $per_package_useflags;
+my @packages          = @ARGV;
+my @injected_packages = $build_injected_args ? split( / /, $build_injected_args ) : ();
+my @parsed_overlays = grep { $_ !~ /gentoo/i } parse_overlays(@packages,@injected_packages);
 
 say "Detected overlays: @parsed_overlays" if @parsed_overlays;
 
@@ -475,15 +478,9 @@ if ($use_equo) {
 
 system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
-my $per_package_useflags;
-my @packages          = @ARGV;
-my @injected_packages = ();
-if ($build_injected_args) {
-    @injected_packages = split( / /, $build_injected_args );
-    say "[*] Injected installs:";
-
-    say "\t* " . $_ for @injected_packages;
-
+if( @injected_packages ) {
+  say "[*] Injected installs:";
+  say "\t* " . $_ for @injected_packages;
 }
 
 # Allow users to specify atoms as: media-tv/kodi[-alsa,avahi]
