@@ -44,6 +44,7 @@ my $remote_portdir            = $ENV{REMOTE_PORTDIR};
 my $pretend                   = $ENV{PRETEND} // 0;
 my $obsoleted                 = $ENV{DETECT_OBSOLETE} // 0;
 my $target_overlay            = $ENV{TARGET_OVERLAY};
+my $verbose                   = $ENV{BUILDER_VERBOSE} // 0;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -67,9 +68,14 @@ sub say { print join( "\n", @_ ) . "\n"; }
 
 sub safe_call {
     my $cmd    = shift;
-    my $rt     = system($cmd);
+    my $rt     = _system($cmd);
     my $return = $rt >> 8;
     exit($return) if ($rt);
+}
+
+sub _system {
+    say "Executing: @_" if $verbose;
+    return system(@_);
 }
 
 sub append_to_file {
@@ -92,7 +98,9 @@ sub append_to_file {
     close $fh_a;
 }
 
-sub parse_overlays { map{ $_ =~ s/.*?\:\://g; $_ } @{ dclone(\@_) }; }
+sub parse_overlays {
+    map { $_ =~ s/.*?\:\://g; $_ } grep {/\:\:/} @{ dclone( \@_ ) };
+}
 
 sub add_portage_repository {
     my $repo = $_[0];
@@ -113,7 +121,7 @@ sub add_portage_repository {
     }
     $reponame = ( split( /\//, $repo ) )[-1] if !$reponame;
     $reponame =~ s/\.|//g;    #clean
-    system("mkdir -p /etc/portage/repos.conf/")
+    _system("mkdir -p /etc/portage/repos.conf/")
         if ( !-d "/etc/portage/repos.conf/" );
 
     say "==== Adding $reponame ====";
@@ -125,7 +133,7 @@ sync-uri = $repo
 auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
 };                            # Declaring the repo and giving priority
 
-    system("emaint sync -r $reponame");
+    _system("emaint sync -r $reponame");
 }
 
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
@@ -140,8 +148,9 @@ sub package_deps {
     $cache_key = "${package}:${depth}:${atom}";
 
     if ( !exists $package_dep_cache{$cache_key} ) {
+        my $local_p = to_abs_atom($package);
         my @dependencies =
-            qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
+            qx/equery -C -q g --depth=$depth $local_p/;    #depth=0 it's all
         chomp @dependencies;
 
 # If an unversioned atom is given, equery returns results for all versions in the portage tree
@@ -151,7 +160,7 @@ sub package_deps {
         @dependencies = uniq(
             sort
                 grep {$_}
-                map { $_ =~ s/\[.*\]|\s//g; &atom($_) if $atom; $_ }
+                map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ }
                 @dependencies
         );
 
@@ -232,8 +241,17 @@ sub calculate_missing {
 # Output: atom form (sys-fs/foobarfs)
 sub atom { s/-[0-9]{1,}.*$//; }
 
+sub abs_atom { atom; s/^(\<|\>|=)+// }
+
 # Same again as a function
 sub to_atom { my $p = shift; $p =~ s/-[0-9]{1,}.*$//; return $p; }
+
+sub to_abs_atom {
+    my $p = shift;
+    $p = to_atom($p);
+    $p =~ s/^(\<|\>|=)+//;
+    return $p;
+}
 
 # Input: Array
 # Output: array with unique elements
@@ -272,20 +290,20 @@ sub compile_packs {
             say "USEFLAGS: "
                 . join( " ",
                 @{ $per_package_useflags->{$target}->[$package_counter] } );
-            $tmp_rt = system(
+            $tmp_rt = _system(
                 "USE=\""
                     . join(
                     " ",
                     @{  $per_package_useflags->{$target}->[$package_counter]
                     }
                     )
-                    . "\" emerge $emerge_defaults_args -j $jobs $extra_arg $pack"
+                    . "\" emerge $emerge_defaults_args -j $jobs $extra_arg '$pack'"
             );
         }
         else {
             $tmp_rt =
-                system(
-                "emerge $emerge_defaults_args -j $jobs $extra_arg $pack");
+                _system(
+                "emerge $emerge_defaults_args -j $jobs $extra_arg '$pack'");
         }
         $package_counter++;
 
@@ -310,13 +328,15 @@ sub help {
 say "****************************************************";
 
 my $per_package_useflags;
-my @packages          = @ARGV;
-my @injected_packages = $build_injected_args ? split( / /, $build_injected_args ) : ();
-my @parsed_overlays = grep { $_ !~ /gentoo/i } parse_overlays(@packages,@injected_packages);
+my @packages = @ARGV;
+my @injected_packages =
+    $build_injected_args ? split( / /, $build_injected_args ) : ();
+my @parsed_overlays =
+    grep { $_ !~ /gentoo/i } parse_overlays( @packages, @injected_packages );
 
 say "Detected overlays: @parsed_overlays" if @parsed_overlays;
 
-@overlays = uniq(@overlays,@parsed_overlays);
+@overlays = uniq( @overlays, @parsed_overlays );
 
 if ( @overlays > 0 ) {
     say "Overlay(s) to add";
@@ -344,39 +364,39 @@ system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
 
 # If defined, fetch a remote /etc/portage
 if ( $remote_conf_portdir ne "" ) {
-    system("rm -rf /etc/portage");
-    system("git clone $remote_conf_portdir /etc/portage");
-    system("chown -R portage:portage /etc/portage");
-    system("chmod -R ug+w,a+rX /etc/portage");
+    _system("rm -rf /etc/portage");
+    _system("git clone $remote_conf_portdir /etc/portage");
+    _system("chown -R portage:portage /etc/portage");
+    _system("chmod -R ug+w,a+rX /etc/portage");
 }
 else {
-    system("cd /etc/portage/;git checkout master; git stash; git pull");
+    _system("cd /etc/portage/;git checkout master; git stash; git pull");
 }
 
 # If defined, fetch a remote /usr/portage
 if ( $remote_portdir ne "" ) {
-    system("rm -rf /usr/portage");
-    system("git clone $remote_portdir /usr/portage");
-    system("chown -R portage:portage /usr/portage");
-    system("chmod -R ug+w,a+rX /usr/portage");
+    _system("rm -rf /usr/portage");
+    _system("git clone $remote_portdir /usr/portage");
+    _system("chown -R portage:portage /usr/portage");
+    _system("chmod -R ug+w,a+rX /usr/portage");
 }
-system("mkdir /var/lib/layman") if ( !-d "/var/lib/layman" );
-system("touch /var/lib/layman/make.conf && layman-updater -R")
+_system("mkdir /var/lib/layman") if ( !-d "/var/lib/layman" );
+_system("touch /var/lib/layman/make.conf && layman-updater -R")
     if ( !-e "/var/lib/layman/make.conf" );
 
-system("echo 'y' | layman -f -a $_") for @overlays;
+_system("echo 'y' | layman -f -a $_") for @overlays;
 
 my $reponame = "LocalOverlay";
 
 # Setting up a local overlay if doesn't exists
-system(
+_system(
     "rm -rf /usr/local/portage;cp -rf /usr/local/local_portage /usr/local/portage"
 ) if ( -d "/usr/local/local_portage" );
 
 if ( !-f "/usr/local/portage/profiles/repo_name" ) {
-    system("mkdir -p /usr/local/portage/{metadata,profiles}");
-    system("echo 'LocalOverlay' > /usr/local/portage/profiles/repo_name");
-    system(
+    _system("mkdir -p /usr/local/portage/{metadata,profiles}");
+    _system("echo 'LocalOverlay' > /usr/local/portage/profiles/repo_name");
+    _system(
         "echo 'masters = gentoo' > /usr/local/portage/metadata/layout.conf");
 }
 else {
@@ -386,8 +406,8 @@ else {
     chomp(@FILE);
     $reponame = $FILE[0];
 }
-system("chown -R portage:portage /usr/local/portage");
-system("chmod -R 755 /usr/local/portage");
+_system("chown -R portage:portage /usr/local/portage");
+_system("chmod -R 755 /usr/local/portage");
 
 qx{
 echo '[$reponame]
@@ -404,48 +424,48 @@ if ( $remote_overlay and $remote_overlay ne "" ) {
 if ( $remove_layman_overlay and $remove_layman_overlay ne "" ) {
     say "===== Removing overlays: $remove_remote_overlay =====";
 
-    system("layman -d $_") for ( split( / /, $remove_layman_overlay ) );
+    _system("layman -d $_") for ( split( / /, $remove_layman_overlay ) );
 }
 if ( $remove_remote_overlay and $remove_remote_overlay ne "" ) {
     say "===== Removing overlays: $remove_remote_overlay =====";
-    system( "rm -rfv /etc/portage/" . $_ . ".conf" )
+    _system( "rm -rfv /etc/portage/" . $_ . ".conf" )
         for ( split( / /, $remote_overlay ) );
 }
 
-system("mkdir -p /usr/portage/distfiles/git3-src");
+_system("mkdir -p /usr/portage/distfiles/git3-src");
 
 unless ( $skip_portage_sync == 1 ) {
 
     # sync portage and overlays
-    system("layman -S");
+    _system("layman -S");
     if ( $webrsync == 1 ) {
-        system("emerge-webrsync");
+        _system("emerge-webrsync");
     }
     else {
-        system("emerge --sync");
+        _system("emerge --sync");
     }
 }
 
 # preparing for MOAR automation
-say "Setting new profile to $profile" if defined $profile;
-qx|eselect profile set $profile|      if defined $profile;
-system("eselect profile list")        if defined $profile;
+say "Setting new profile to $profile"   if defined $profile;
+_system("eselect profile set $profile") if defined $profile;
+_system("eselect profile list")         if defined $profile;
 
 if ( $use_equo && $entropy_repository eq "weekly" ) {
-    qx|equo repo disable sabayonlinux.org|;
-    qx|equo repo enable sabayon-weekly|;
+    _system("equo repo disable sabayonlinux.org");
+    _system("equo repo enable sabayon-weekly");
 }
 elsif ( $use_equo && $entropy_repository eq "testing" ) {
-    qx|equo repo disable sabayon-weekly|;
-    qx|equo repo enable sabayonlinux.org|;
-    qx|equo repo enable sabayon-limbo|;
+    _system("equo repo disable sabayon-weekly");
+    _system("equo repo enable sabayonlinux.org");
+    _system("equo repo enable sabayon-limbo");
 }
 
 if ($use_equo) {
 
     say "Devkit version:";
-    system("equo s -vq app-misc/sabayon-devkit");
-
+    _system("equo s -vq app-misc/sabayon-devkit");
+    _system("enman list --installed -q");
     my $enman_list_output = qx|enman list --installed -q|;
     chomp($enman_list_output);
     my @installed_enman_repos = split( /\n/, $enman_list_output );
@@ -468,19 +488,19 @@ if ($use_equo) {
         }
     }
 
-    system("enman add $repository_name")
+    _system("enman add $repository_name")
         if ($enman_add_self
         and $repository_name
         and $repository_name ne "" );
-    system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
-    system("equo up && equo u");
+    _system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
+    _system("equo up && equo u");
 }
 
-system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
+_system("cp -rf $make_conf /etc/portage/make.conf") if $make_conf;
 
-if( @injected_packages ) {
-  say "[*] Injected installs:";
-  say "\t* " . $_ for @injected_packages;
+if (@injected_packages) {
+    say "[*] Injected installs:";
+    say "\t* " . $_ for @injected_packages;
 }
 
 # Allow users to specify atoms as: media-tv/kodi[-alsa,avahi]
@@ -538,41 +558,45 @@ if ($use_equo) {
     say "", "[install] Those dependencies will be installed with equo :",
         @packages_deps, "";
     if ($equo_split_install) {
-        safe_call("equo i $equo_install_args --bdeps $_")
+        safe_call("equo i $equo_install_args --bdeps '$_'")
             for ( @packages_deps, @equo_install )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         if ( @equo_remove > 0 and !$pretend ) {
             say "Removing with equo: @equo_remove";
-            system("equo rm --nodeps $_") for (@equo_remove);
+            _system("equo rm --nodeps '$_'") for (@equo_remove);
         }
     }
     else {
-        safe_call(
-            "equo i $equo_install_args --bdeps @packages_deps @equo_install")
-            if ( @packages_deps > 0 or @equo_install > 0 )
+        my @p = map {"'$_'"} ( @packages_deps, @equo_install );
+        my @r = map {"'$_'"} @equo_remove;
+        safe_call("equo i $equo_install_args --bdeps @p")
+            if ( @p > 0 )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
-        system("equo rm --nodeps @equo_remove") if ( @equo_remove > 0 );
+        _system("equo rm --nodeps @r") if ( @r > 0 );
     }
 }
 
 say "*** Ready to compile, finger crossed ***";
 
-system("emerge --info")
+_system("emerge --info")
     ; #always give detailed information about the building environment, helpful to debug
 
 my $rt;
 
 if ( $emerge_remove and $emerge_remove ne "" ) {
     say "Removing with emerge: $emerge_remove";
-    system("emerge -C $_") for split( / /, $emerge_remove );
+    _system("emerge -C '$_'") for split( / /, $emerge_remove );
 }
+
+_system("chmod +x /pre-script;./pre-script") if -e "/pre-script";
 
 if ($emerge_split_install) {
     compile_packs( "targets", @packages );
     $rt = 0;    #consider the build good anyway, like a "keep-going"
 }
 else {
-    $rt = system("emerge $emerge_defaults_args -j $jobs @packages");
+    my @p = map {"'$_'"} @packages;
+    $rt = _system("emerge $emerge_defaults_args -j $jobs @p");
 }
 
 my $return = $rt >> 8;
@@ -580,30 +604,33 @@ my $return = $rt >> 8;
 # best effort -B
 compile_packs( "injected_targets", @injected_packages );
 
+_system("chmod +x /post-script;./post-script") if -e "/post-script";
+
 if ( $preserved_rebuild and !$pretend ) {
 
-    system("emerge -j $jobs --buildpkg \@preserved-rebuild");
-    system("revdep-rebuild");
+    _system("emerge -j $jobs --buildpkg \@preserved-rebuild");
+    _system("revdep-rebuild");
 
 }
 
 if ( $qualityassurance_checks == 1 ) {
     say "*** Quality assurance ***";
-    foreach my $pn ( @packages, @injected_packages ) {
+    foreach my $pn ( map { abs_atom; $_ } ( @packages, @injected_packages ) )
+    {
         say ">> Running repoman on $pn";
-        system(
+        _system(
             "pushd \$(dirname \$(equery which $pn 2>/dev/null)); repoman; popd"
         );
         $pn =~ s/\:\:.*//g;
         say ">> Detecting missing dependencies for $pn";
-        system("dynlink-scanner $pn");
-        system("depcheck $pn");
+        _system("dynlink-scanner $pn");
+        _system("depcheck $pn");
     }
 }
 
 if ( $obsoleted and $target_overlay ) {
     say "*** Detecting obsoletes ***";
-    system("sabayon-detectobsolete --overlay ${target_overlay}");
+    _system("sabayon-detectobsolete --overlay ${target_overlay}");
 }
 
 # Copy files to artifacts folder
