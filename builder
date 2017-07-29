@@ -149,7 +149,7 @@ sub package_deps {
 
     if ( !exists $package_dep_cache{$cache_key} ) {
         my @dependencies =
-            qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
+            qx/equery -C -q g --depth=$depth '$package'/;    #depth=0 it's all
         chomp @dependencies;
 
 # If an unversioned atom is given, equery returns results for all versions in the portage tree
@@ -245,12 +245,7 @@ sub abs_atom { atom; s/^(\<|\>|=)+// }
 # Same again as a function
 sub to_atom { my $p = shift; local $_ = $p; atom; return $_; }
 
-sub to_abs_atom {
-    my $p = shift;
-    $p = to_atom($p);
-    $p =~ s/^(\<|\>|=)+//;
-    return $p;
-}
+sub to_abs_atom { my $p = shift; local $_ = $p; abs_atom; return $_; }
 
 # Input: Array
 # Output: array with unique elements
