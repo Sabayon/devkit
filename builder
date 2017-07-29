@@ -148,9 +148,8 @@ sub package_deps {
     $cache_key = "${package}:${depth}:${atom}";
 
     if ( !exists $package_dep_cache{$cache_key} ) {
-        my $local_p = to_abs_atom($package);
         my @dependencies =
-            qx/equery -C -q g --depth=$depth $local_p/;    #depth=0 it's all
+            qx/equery -C -q g --depth=$depth $package/;    #depth=0 it's all
         chomp @dependencies;
 
 # If an unversioned atom is given, equery returns results for all versions in the portage tree
@@ -244,7 +243,7 @@ sub atom { s/-[0-9]{1,}.*$//; }
 sub abs_atom { atom; s/^(\<|\>|=)+// }
 
 # Same again as a function
-sub to_atom { my $p = shift; $p =~ s/-[0-9]{1,}.*$//; return $p; }
+sub to_atom { my $p = shift; local $_ = $p; atom; return $_; }
 
 sub to_abs_atom {
     my $p = shift;
@@ -619,12 +618,12 @@ if ( $qualityassurance_checks == 1 ) {
     {
         say ">> Running repoman on $pn";
         _system(
-            "pushd \$(dirname \$(equery which $pn 2>/dev/null)); repoman; popd"
+            "pushd \$(dirname \$(equery which '$pn' 2>/dev/null)); repoman; popd"
         );
         $pn =~ s/\:\:.*//g;
         say ">> Detecting missing dependencies for $pn";
-        _system("dynlink-scanner $pn");
-        _system("depcheck $pn");
+        _system("dynlink-scanner '$pn'");
+        _system("depcheck '$pn'");
     }
 }
 
