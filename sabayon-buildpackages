@@ -41,7 +41,7 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$ENMAN_REPOSITORIES" ] || docker_env+=(-e "ENMAN_REPOSITORIES=$ENMAN_REPOSITORIES")
 [ -z "$REMOVE_ENMAN_REPOSITORIES" ] || docker_env+=(-e "REMOVE_ENMAN_REPOSITORIES=$REMOVE_ENMAN_REPOSITORIES")
 [ -z "$DISTFILES" ] || docker_volumes+=(-v "$DISTFILES:/usr/portage/distfiles")
-[ -z "$INTERNAL_BUILDER" ] || docker_volumes+=(-v "/usr/sbin/builder:/usr/sbin/builder")
+[ -z "$INTERNAL_BUILDER" ] || docker_volumes+=(-v "$INTERNAL_BUILDER:/usr/sbin/builder")
 [ -z "$ENTROPY_DOWNLOADED_PACKAGES" ] || docker_volumes+=(-v "$ENTROPY_DOWNLOADED_PACKAGES:/var/lib/entropy/client/packages")
 [ -z "$DISTCC_HOSTS" ] || docker_env+=(-e "DISTCC_HOSTS=$DISTCC_HOSTS")
 [ -z "${PRUNE_VIRTUALS}" ] || docker_env+=(-e "PRUNE_VIRTUALS=$PRUNE_VIRTUALS")
@@ -58,9 +58,13 @@ docker_volumes=( -v "$OUTPUT_DIR:/usr/portage/packages" )
 [ -z "$REMOTE_PORTDIR" ] || docker_env+=(-e "REMOTE_PORTDIR=$REMOTE_PORTDIR")
 [ -z "$ETP_NOCACHE" ] || docker_env+=(-e "ETP_NOCACHE=$ETP_NOCACHE")
 [ -z "$PRETEND" ] || docker_env+=(-e "PRETEND=$PRETEND")
+[ -z "$BUILDER_VERBOSE" ] || docker_env+=(-e "BUILDER_VERBOSE=$BUILDER_VERBOSE")
 [ -z "$DETECT_OBSOLETE" ] || docker_env+=(-e "DETECT_OBSOLETE=$DETECT_OBSOLETE")
 [ -z "$TARGET_OVERLAY" ] || docker_env+=(-e "TARGET_OVERLAY=$TARGET_OVERLAY")
 [ -d "$LOCAL_OVERLAY" ] && docker_volumes+=(-v "$LOCAL_OVERLAY:/usr/local/local_portage")
+[ -z "$SHARE_WORKSPACE" ] || docker_volumes+=(-v "$SAB_WORKSPACE:/devkit-workspace")
+[ -z "$PRE_SCRIPT" ] || docker_volumes+=(-v "$PRE_SCRIPT:/pre-script")
+[ -z "$POST_SCRIPT" ] || docker_volumes+=(-v "$POST_SCRIPT:/post-script")
 
 if [ -e $MAKE_CONF ]; then
   echo "You specified a make.conf. I hope you know what are you doing"
@@ -88,4 +92,4 @@ echo "Spawning the package builder container for '$@'."
 echo ""
 echo "docker run $DOCKER_OPTS \"${docker_env[@]}\" \"${docker_volumes[@]}\" $DOCKER_IMAGE $@"
 
-docker run $DOCKER_OPTS "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE $@
+docker run $DOCKER_OPTS "${docker_env[@]}" "${docker_volumes[@]}" $DOCKER_IMAGE "$@"
