@@ -1,0 +1,80 @@
+#!/usr/bin/perl
+
+use feature 'say';
+use Cwd;
+use File::Temp;
+
+my $current_git_directory = qx|git rev-parse --show-toplevel 2>/dev/null|;
+chomp $current_git_directory;
+my $cwd = getcwd;
+chdir($current_git_directory);
+my $commit_message_tmpfile = File::Temp->new();
+my @changed_files          = qx|git status -s|;
+my $n_changed_files        = scalar @changed_files;
+
+die "No files changed. Exiting." if $n_changed_files <= 0;
+my %atoms = ();
+
+sub _build_git_repo {
+    my ($file_name) = @_;
+    my $commit_message;
+
+    if ( $file_name
+        =~ /conf\/(home|intel|arm(arch|hfp|v6l|vtl))\/(entropy|portage|repo)\/(.*)/
+        )
+    {
+        $commit_message = "$1/$4: ";
+    }
+    elsif ( $filename eq
+        "conf/noarch/entropy/packages/packages.server.dep_blacklist" )
+    {
+        $commit_message = "dep_blacklist: ";
+    }
+    elsif ( $filename eq
+        "conf/noarch/entropy/packages/packages.server.dep_rewrite" )
+    {
+        $commit_message = "dep_rewrite: ";
+    }
+
+    if ($commit_message) {
+        print $commit_message_tmpfile $commit_message;
+        system( "git commit -eF " . $commit_message_tmpfile->filename );
+        unlink($commit_message_tmpfile) if -e $commit_message_tmpfile;
+    }
+
+}
+
+sub _overlay_git_repo {
+    die "If you are in the overlay, call me in the ebuild dir"
+        if $current_git_directory eq getcwd;
+    chdir($cwd);
+    die "I'm not pleased.. but you could force with --force"
+        if ( _system("repoman") && $ARGV[0] ne "--force" );
+    _system("repoman commit $ARGV[0]");
+}
+
+sub _system {
+    my $prog = shift;
+    my $rv = system( {$prog} $prog => @_ );
+    if ( $rv == -1 ) { say("Can't launch $prog: $!"); return 1; }
+    elsif ( my $s = $rv & 127 ) {
+        say("$prog died from signal $s");
+        return 1;
+    }
+    elsif ( my $e = $rv >> 8 ) { say("$prog exited with code $e"); return 1; }
+    return 0;
+}
+
+foreach my $file (@changed_files) {
+    chomp $file;
+    my @words = split( ' ', $file, 2 );
+    next if $words[0] eq "??";    # allow "dangling" files
+    my $file_name = $words[1];
+    if ( $file_name =~ /conf\/(intel|arm|noarch)/ ) {
+        _build_git_repo($file_name);
+    }
+    elsif ( $file_name =~ /\.ebuild/ ) {
+        _overlay_git_repo($file_name);
+    }
+
+}
