@@ -416,7 +416,7 @@ if ( $remote_overlay and $remote_overlay ne "" ) {
 }
 
 if ( $remove_layman_overlay and $remove_layman_overlay ne "" ) {
-    say "===== Removing overlays: $remove_remote_overlay =====";
+    say "===== Removing overlays: $remove_layman_overlay =====";
 
     _system("layman -d $_") for ( split( / /, $remove_layman_overlay ) );
 }
