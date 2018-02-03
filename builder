@@ -5,7 +5,7 @@ use v5.10;
 no feature "say";
 use Storable 'dclone';
 
-my $profile           = $ENV{BUILDER_PROFILE}   // 3;
+my $profile           = $ENV{BUILDER_PROFILE}   // 16;
 my $jobs              = $ENV{BUILDER_JOBS}      // 1;
 my $use_equo          = $ENV{USE_EQUO}          // 1;
 my $preserved_rebuild = $ENV{PRESERVED_REBUILD} // 0;
