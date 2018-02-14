@@ -2,6 +2,8 @@
 
 set -e
 
+export BUILD_DIR="${BUILD_DIR:-/opt/sabayon-build/}"
+
 check_docker_requirements(){
   if [ "$(id -u)" != "0" ]; then
     groups | grep -q docker || echo "--> If you are not running the script as root, your user should be in the docker group to use it. (sudo gpasswd -a $USER docker)"
@@ -15,7 +17,7 @@ build_sync() {
   layman -S
   emerge --sync
   eix-update
-  pushd /opt/sabayon-build/
+  pushd "${BUILD_DIR}"
     git stash
     git fetch --all || true
     git checkout master || true
