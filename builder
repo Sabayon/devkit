@@ -459,34 +459,68 @@ if ($use_equo) {
 
     say "Devkit version:";
     _system("equo s -vq app-misc/sabayon-devkit");
+
+    _system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
+    # Try to use last enman version
+    _system("equo up && equo i enman --relaxed");
+
     _system("enman list --installed -q");
     my $enman_list_output = qx|enman list --installed -q|;
     chomp($enman_list_output);
-    my @installed_enman_repos = split( /\n/, $enman_list_output );
+    my @installed_enman_repos;
+
+    if ($enman_list_output eq "No repositories were installed with enman") {
+        @installed_enman_repos = ();
+    } else {
+        @installed_enman_repos = split( / /, $enman_list_output );
+    }
 
     if ( $enman_repositories and $enman_repositories ne "" ) {
-        my @enman_toadd = split( / /, $enman_repositories );
+        say "==================================";
+        my @enman_toadd;
+        if (index($enman_repositories, "\n") != -1 ) {
+          @enman_toadd = split( /\n/, $enman_repositories );
+        } else {
+          @enman_toadd = split( / /, $enman_repositories );
+        }
+
         for my $enman_add (@enman_toadd) {
+            say "Check enman ".$enman_add;
             if ( !grep ( $enman_add, @installed_enman_repos ) ) {
-                safe_call("enman add $_");
+                say "Try to install ".$enman_add;
+                safe_call("enman add $enman_add");
+            } else {
+                say "Already present: ".$enman_add;
             }
         }
+        say "==================================";
     }
 
     if ( $remove_enman_repositories and $remove_enman_repositories ne "" ) {
-        my @enman_toremove = split( / /, $remove_enman_repositories );
+        say "==================================";
+        my @enman_toremove;
+        if (index($remove_enman_repositories, "\n") != -1 ) {
+          @enman_toremove = split( /\n/, $remove_enman_repositories);
+        } else {
+          @enman_toremove = split( / /, $remove_enman_repositories);
+        }
+
         for my $enman_remove (@enman_toremove) {
             if ( grep ( $enman_remove, @installed_enman_repos ) ) {
-                safe_call("enman remove $_");
+                say "Try to remove enamn repository ".$enman_remove;
+                safe_call("enman remove $enman_remove");
+            } else {
+                say "Enman repository $enman_remove is not present.";
             }
         }
+        say "==================================";
     }
 
     _system("enman add $repository_name")
         if ($enman_add_self
         and $repository_name
         and $repository_name ne "" );
-    _system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
+
     _system("equo up && equo u");
 }
 
