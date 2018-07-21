@@ -668,10 +668,22 @@ else {
     $return = $rt >> 8;
 }
 
-loud "Compilation phase end";
+if ( @injected_packages > 0 ) {
+    my $res = compile_packs( "injected_targets", @injected_packages );
+    loud "Compilation summary for injected_targets";
+    foreach my $k ( keys %{$res} ) {
+        my $c = $res->{$k} >> 8;
+        if ( $c != 0 ) {
+            say "$k : build failed ( Exit: $c )";
+            $return = 1 unless $keep_going;
+        }
+        else {
+            say "$k : build succeeded";
+        }
+    }
+}
 
-# best effort -B
-compile_packs( "injected_targets", @injected_packages );
+loud "Compilation phase end (Exit: $return)";
 
 _system("chmod +x /post-script;./post-script") if -e "/post-script";
 
