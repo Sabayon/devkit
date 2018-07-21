@@ -1,5 +1,20 @@
 #!/usr/bin/env perl
 
+# Copyright 2016-2018 See AUTHORS file
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 use Getopt::Long;
 use v5.10;
 no feature "say";
@@ -10,7 +25,7 @@ my $jobs              = $ENV{BUILDER_JOBS}      // 1;
 my $use_equo          = $ENV{USE_EQUO}          // 1;
 my $preserved_rebuild = $ENV{PRESERVED_REBUILD} // 0;
 my $emerge_defaults_args = $ENV{EMERGE_DEFAULTS_ARGS}
-    // "--accept-properties=-interactive --verbose --oneshot --complete-graph --buildpkg";
+    // "--accept-properties=-interactive --q --oneshot --complete-graph --buildpkg";
 $ENV{FEATURES} = $ENV{FEATURES}
     // "parallel-fetch protect-owned compressdebug splitdebug -userpriv";
 
@@ -45,6 +60,7 @@ my $pretend                   = $ENV{PRETEND} // 0;
 my $obsoleted                 = $ENV{DETECT_OBSOLETE} // 0;
 my $target_overlay            = $ENV{TARGET_OVERLAY};
 my $verbose                   = $ENV{BUILDER_VERBOSE} // 0;
+my $keep_going                = $ENV{KEEP_GOING} // 1;
 
 my $make_conf = $ENV{MAKE_CONF};
 
@@ -65,6 +81,16 @@ $ENV{ACCEPT_LICENSE} = "*";    # we can use wildcard since entropy 302
 
 # A barely print replacement
 sub say { print join( "\n", @_ ) . "\n"; }
+
+sub loud {
+    say;
+    say "===" x 4;
+    say "===" x 4;
+    say @_;
+    say "===" x 4;
+    say "===" x 4;
+    say;
+}
 
 sub safe_call {
     my $cmd    = shift;
@@ -271,9 +297,9 @@ sub detect_useflags {
 sub compile_packs {
     my ( $target, @packages ) = @_;
     my $extra_arg;
+    my $compiled = {};
     $extra_arg = "-B" if $target eq "injected_targets";
     my $package_counter = 0;
-    my $return;
     for my $pack (@packages) {
         my $tmp_rt;
         say "\n" x 2, "==== Compiling $pack ====", "\n" x 2;
@@ -300,12 +326,9 @@ sub compile_packs {
                 "emerge $emerge_defaults_args -j $jobs $extra_arg '$pack'");
         }
         $package_counter++;
-
-        $return = $tmp_rt
-            if ( $? == -1 or $? & 127 or !$rt )
-            ;    # if one fails, the build should be considered failed!
+        $compiled->{$pack} = $tmp_rt;
     }
-    return $return;
+    return $compiled;
 }
 
 sub help {
@@ -339,11 +362,11 @@ if ( @overlays > 0 ) {
     }
 }
 
-say "[*] Installing:";
+say "[*] Compiling:";
 
 say "\t* " . $_ for @ARGV;
 
-say "[*] Syncing configurations files, Layman and Portage";
+loud "Setup phase start";
 
 if ($pretend) {
     say "[*] PRETEND enabled, no real action will be performed.";
@@ -461,6 +484,7 @@ if ($use_equo) {
     _system("equo s -vq app-misc/sabayon-devkit");
 
     _system("equo repo mirrorsort sabayonlinux.org") if $equo_mirrorsort;
+
     # Try to use last enman version
     _system("equo up && equo i enman --relaxed");
 
@@ -469,28 +493,31 @@ if ($use_equo) {
     chomp($enman_list_output);
     my @installed_enman_repos;
 
-    if ($enman_list_output eq "No repositories were installed with enman") {
+    if ( $enman_list_output eq "No repositories were installed with enman" ) {
         @installed_enman_repos = ();
-    } else {
+    }
+    else {
         @installed_enman_repos = split( / /, $enman_list_output );
     }
 
     if ( $enman_repositories and $enman_repositories ne "" ) {
         say "==================================";
         my @enman_toadd;
-        if (index($enman_repositories, "\n") != -1 ) {
-          @enman_toadd = split( /\n/, $enman_repositories );
-        } else {
-          @enman_toadd = split( / /, $enman_repositories );
+        if ( index( $enman_repositories, "\n" ) != -1 ) {
+            @enman_toadd = split( /\n/, $enman_repositories );
+        }
+        else {
+            @enman_toadd = split( / /, $enman_repositories );
         }
 
         for my $enman_add (@enman_toadd) {
-            say "Check enman ".$enman_add;
+            say "Check enman " . $enman_add;
             if ( !grep ( $enman_add, @installed_enman_repos ) ) {
-                say "Try to install ".$enman_add;
-                safe_call("enman add $enman_add");
-            } else {
-                say "Already present: ".$enman_add;
+                say "Try to install " . $enman_add;
+                _system("enman add $enman_add");
+            }
+            else {
+                say "Already present: " . $enman_add;
             }
         }
         say "==================================";
@@ -499,17 +526,19 @@ if ($use_equo) {
     if ( $remove_enman_repositories and $remove_enman_repositories ne "" ) {
         say "==================================";
         my @enman_toremove;
-        if (index($remove_enman_repositories, "\n") != -1 ) {
-          @enman_toremove = split( /\n/, $remove_enman_repositories);
-        } else {
-          @enman_toremove = split( / /, $remove_enman_repositories);
+        if ( index( $remove_enman_repositories, "\n" ) != -1 ) {
+            @enman_toremove = split( /\n/, $remove_enman_repositories );
+        }
+        else {
+            @enman_toremove = split( / /, $remove_enman_repositories );
         }
 
         for my $enman_remove (@enman_toremove) {
             if ( grep ( $enman_remove, @installed_enman_repos ) ) {
-                say "Try to remove enamn repository ".$enman_remove;
-                safe_call("enman remove $enman_remove");
-            } else {
+                say "Try to remove enamn repository " . $enman_remove;
+                _system("enman remove $enman_remove");
+            }
+            else {
                 say "Enman repository $enman_remove is not present.";
             }
         }
@@ -604,12 +633,10 @@ if ($use_equo) {
     }
 }
 
-say "*** Ready to compile, finger crossed ***";
+loud "Pre-compilation phase start";
 
 _system("emerge --info")
     ; #always give detailed information about the building environment, helpful to debug
-
-my $rt;
 
 if ( $emerge_remove and $emerge_remove ne "" ) {
     say "Removing with emerge: $emerge_remove";
@@ -618,16 +645,30 @@ if ( $emerge_remove and $emerge_remove ne "" ) {
 
 _system("chmod +x /pre-script;./pre-script") if -e "/pre-script";
 
+loud "Compilation phase start";
+
+my $return = 0;
 if ($emerge_split_install) {
-    compile_packs( "targets", @packages );
-    $rt = 0;    #consider the build good anyway, like a "keep-going"
+    my $res = compile_packs( "targets", @packages );
+    loud "Compilation summary";
+    foreach my $k ( keys %{$res} ) {
+        my $c = $res->{$k} >> 8;
+        if ( $c != 0 ) {
+            say "$k : build failed ( Exit: $c )";
+            $return = 1 unless $keep_going;
+        }
+        else {
+            say "$k : build succeeded";
+        }
+    }
 }
 else {
     my @p = map {"'$_'"} @packages;
-    $rt = _system("emerge $emerge_defaults_args -j $jobs @p");
+    my $rt = _system("emerge $emerge_defaults_args -j $jobs @p");
+    $return = $rt >> 8;
 }
 
-my $return = $rt >> 8;
+loud "Compilation phase end";
 
 # best effort -B
 compile_packs( "injected_targets", @injected_packages );
@@ -642,7 +683,7 @@ if ( $preserved_rebuild and !$pretend ) {
 }
 
 if ( $qualityassurance_checks == 1 ) {
-    say "*** Quality assurance ***";
+    loud "Quality assurance checks";
     foreach my $pn ( map { abs_atom; $_ } ( @packages, @injected_packages ) )
     {
         say ">> Running repoman on $pn";
@@ -657,7 +698,7 @@ if ( $qualityassurance_checks == 1 ) {
 }
 
 if ( $obsoleted and $target_overlay ) {
-    say "*** Detecting obsoletes ***";
+    loud "Obsoletes detection";
     _system("sabayon-detectobsolete --overlay ${target_overlay}");
 }
 
