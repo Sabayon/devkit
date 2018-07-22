@@ -25,7 +25,7 @@ my $jobs              = $ENV{BUILDER_JOBS}      // 1;
 my $use_equo          = $ENV{USE_EQUO}          // 1;
 my $preserved_rebuild = $ENV{PRESERVED_REBUILD} // 0;
 my $emerge_defaults_args = $ENV{EMERGE_DEFAULTS_ARGS}
-    // "--accept-properties=-interactive --q --oneshot --complete-graph --buildpkg";
+    // "--accept-properties=-interactive --quiet --oneshot --complete-graph --buildpkg";
 $ENV{FEATURES} = $ENV{FEATURES}
     // "parallel-fetch protect-owned compressdebug splitdebug -userpriv";
 
