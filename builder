@@ -128,6 +128,11 @@ sub parse_overlays {
     map { $_ =~ s/.*?\:\://g; $_ } grep {/\:\:/} @{ dclone( \@_ ) };
 }
 
+sub hook_script {
+    my $s = shift;
+    _system("chmod +x ${s};${s}") if -e $s;
+}
+
 sub add_portage_repository {
     my $repo = $_[0];
     my $reponame;
@@ -643,7 +648,8 @@ if ( $emerge_remove and $emerge_remove ne "" ) {
     _system("emerge -C '$_'") for split( / /, $emerge_remove );
 }
 
-_system("chmod +x /pre-script;./pre-script") if -e "/pre-script";
+hook_script("./pre-script");
+hook_script("/pre-script");
 
 loud "Compilation phase start";
 
@@ -685,7 +691,8 @@ if ( @injected_packages > 0 ) {
 
 loud "Compilation phase end (Exit: $return)";
 
-_system("chmod +x /post-script;./post-script") if -e "/post-script";
+hook_script("./post-script");
+hook_script("/post-script");
 
 if ( $preserved_rebuild and !$pretend ) {
 
