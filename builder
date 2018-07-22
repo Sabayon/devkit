@@ -459,7 +459,7 @@ unless ( $skip_portage_sync == 1 ) {
         _system("emerge-webrsync");
     }
     else {
-        _system("emerge --sync");
+        _system("emerge --sync --quiet");
     }
 }
 
