@@ -620,7 +620,7 @@ if ($use_equo) {
     say "", "[install] Those dependencies will be installed with equo :",
         @packages_deps, "";
     if ($equo_split_install) {
-        safe_call("equo i $equo_install_args --bdeps '$_'")
+        _system("equo i $equo_install_args --bdeps '$_'")
             for ( @packages_deps, @equo_install )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         if ( @equo_remove > 0 and !$pretend ) {
@@ -631,7 +631,7 @@ if ($use_equo) {
     else {
         my @p = map {"'$_'"} ( @packages_deps, @equo_install );
         my @r = map {"'$_'"} @equo_remove;
-        safe_call("equo i $equo_install_args --bdeps @p")
+        _system("equo i $equo_install_args --bdeps @p")
             if ( @p > 0 )
             ; ## bail out here, if installs fails. emerge will compile a LOT of stuff
         _system("equo rm --nodeps @r") if ( @r > 0 );
