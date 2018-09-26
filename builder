@@ -20,19 +20,19 @@ use v5.10;
 no feature "say";
 use Storable 'dclone';
 
-my $profile           = $ENV{BUILDER_PROFILE}   // 16;
-my $jobs              = $ENV{BUILDER_JOBS}      // 1;
-my $use_equo          = $ENV{USE_EQUO}          // 1;
-my $preserved_rebuild = $ENV{PRESERVED_REBUILD} // 0;
+my $profile              = $ENV{BUILDER_PROFILE} // 16;
+my $jobs                 = $ENV{BUILDER_JOBS} // 1;
+my $use_equo             = $ENV{USE_EQUO} // 1;
+my $preserved_rebuild    = $ENV{PRESERVED_REBUILD} // 0;
 my $emerge_defaults_args = $ENV{EMERGE_DEFAULTS_ARGS}
     // "--accept-properties=-interactive --quiet --oneshot --complete-graph --buildpkg";
 $ENV{FEATURES} = $ENV{FEATURES}
     // "parallel-fetch protect-owned compressdebug splitdebug -userpriv";
 
-my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS}   // 1;
+my $equo_install_atoms   = $ENV{EQUO_INSTALL_ATOMS} // 1;
 my $equo_install_version = $ENV{EQUO_INSTALL_VERSION} // 0;
-my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL}   // 0;
-my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT}      // 1;
+my $equo_split_install   = $ENV{EQUO_SPLIT_INSTALL} // 0;
+my $equo_mirrorsort      = $ENV{EQUO_MIRRORSORT} // 1;
 my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
     // "main";    # Can be weekly, main, testing
 my $artifacts_folder          = $ENV{ARTIFACTS_DIR};
@@ -267,6 +267,12 @@ sub calculate_missing {
     return @to_install;
 }
 
+sub portage_perms {
+    my $dir = shift;
+    _system("chown -R portage:portage $dir");
+    _system("chmod -R ug+w,a+rX $dir");
+}
+
 # Input : complete gentoo package (sys-fs/foobarfs-1.9.2)
 # Output: atom form (sys-fs/foobarfs)
 sub atom { s/-[0-9]{1,}.*$//; }
@@ -388,8 +394,7 @@ system("echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen");    #be sure about that.
 if ( $remote_conf_portdir ne "" ) {
     _system("rm -rf /etc/portage");
     _system("git clone $remote_conf_portdir /etc/portage");
-    _system("chown -R portage:portage /etc/portage");
-    _system("chmod -R ug+w,a+rX /etc/portage");
+    portage_perms('/etc/portage');
 }
 else {
     _system("cd /etc/portage/;git checkout master; git stash; git pull");
@@ -399,9 +404,8 @@ else {
 if ( $remote_portdir ne "" ) {
     _system("rm -rf /usr/portage");
     _system("git clone $remote_portdir /usr/portage");
-    _system("chown -R portage:portage /usr/portage");
-    _system("chmod -R ug+w,a+rX /usr/portage");
 }
+
 _system("mkdir /var/lib/layman") if ( !-d "/var/lib/layman" );
 _system("touch /var/lib/layman/make.conf && layman-updater -R")
     if ( !-e "/var/lib/layman/make.conf" );
@@ -428,8 +432,7 @@ else {
     chomp(@FILE);
     $reponame = $FILE[0];
 }
-_system("chown -R portage:portage /usr/local/portage");
-_system("chmod -R 755 /usr/local/portage");
+portage_perms('/usr/local/portage');
 
 qx{
 echo '[$reponame]
@@ -455,6 +458,7 @@ if ( $remove_remote_overlay and $remove_remote_overlay ne "" ) {
 }
 
 _system("mkdir -p /usr/portage/distfiles/git3-src");
+portage_perms('/usr/portage');
 
 unless ( $skip_portage_sync == 1 ) {
 
