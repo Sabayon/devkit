@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+use URI;
 use Getopt::Long;
 use v5.10;
 no feature "say";
@@ -40,6 +41,11 @@ my $dep_scan_depth            = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
 my $skip_portage_sync         = $ENV{SKIP_PORTAGE_SYNC} // 0;
 my $emerge_split_install      = $ENV{EMERGE_SPLIT_INSTALL} // 0;
 my $webrsync                  = $ENV{WEBRSYNC} // 0;
+# Define git tarball url to use instead of webrsync or emerge --sync
+my $portage_git_url           = $ENV{PORTAGE_GIT_URL} // "";
+# Define supported tarball types: github|gitlab
+my $portage_git_service       = $ENV{PORTAGE_GIT_SRV} // "github";
+my $portage_git_branch        = $ENV{PORTAGE_GIT_BRANCH} // "master";
 my $enman_repositories        = $ENV{ENMAN_REPOSITORIES};
 my $emerge_remove             = $ENV{EMERGE_REMOVE};
 my $remove_enman_repositories = $ENV{REMOVE_ENMAN_REPOSITORIES};
@@ -342,6 +348,32 @@ sub compile_packs {
     return $compiled;
 }
 
+sub fetch_portage_from_git {
+
+  my ($url, $srv, $branch ) = @_;
+
+  $url = substr($url, 0, length($url)-1) unless substr($url, -1) cmp "/";
+  my $uri = URI->new($url);
+  my $base = ( $uri->path_segments )[-1];
+
+  say "==== Fetching $srv Portage for branch $branch ====";
+
+  if ( $srv and $srv eq "gitlab" ) {
+    $url .= "/-/archive/$branch/$base-$branch.tar.gz";
+  } else {
+    $url .= "/archive/$branch.tar.gz";
+  }
+
+  _system( "wget -O /tmp/portage.tar.gz $url" );
+  _system( "mkdir /tmp/portage ; tar xzf /tmp/portage.tar.gz -C /tmp/portage" );
+
+  # Avoid to remove /usr/portage for use case where I have already
+  # files under /usr/portage/distfiles or /usr/portage/packages to use.
+  _system( "cp -arf /tmp/portage/$base-$branch/* /usr/portage/" );
+
+  _system( "rm -rf /tmp/portage " );
+}
+
 sub help {
     say "-> You should feed me with something", "", "Examples:", "",
         "\t$0 app-text/tree", "\t$0 plasma-meta --layman kde", "",
@@ -464,7 +496,11 @@ unless ( $skip_portage_sync == 1 ) {
 
     # sync portage and overlays
     _system("layman -S");
-    if ( $webrsync == 1 ) {
+    if ( $portage_git_url ne "" and $portage_git_branch ne "" ) {
+      fetch_portage_from_git( $portage_git_url, $portage_git_service,
+        $portage_git_branch );
+    }
+    elsif ( $webrsync == 1 ) {
         _system("emerge-webrsync");
     }
     else {
