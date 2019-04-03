@@ -350,7 +350,7 @@ sub compile_packs {
 
 sub fetch_portage_from_git {
 
-  my ($url, $srv, $branch ) = @_;
+  my ( $url, $srv, $branch ) = @_;
 
   $url = substr($url, 0, length($url)-1) unless substr($url, -1) cmp "/";
   my $uri = URI->new($url);
@@ -369,7 +369,14 @@ sub fetch_portage_from_git {
 
   # Avoid to remove /usr/portage for use case where I have already
   # files under /usr/portage/distfiles or /usr/portage/packages to use.
-  _system( "cp -arf /tmp/portage/$base-$branch/* /usr/portage/" );
+  my @excluded_dirs = (
+    "'distfiles'",
+    "'packages'"
+  );
+  my $rsync_opts = "-a --delete --delete-during --recursive -d -A -H";
+  $rsync_opts .= " --exclude $_" foreach @excluded_dirs;
+
+  _system( "rsync $rsync_opts /tmp/portage/$base-$branch/ /usr/portage/" );
 
   _system( "rm -rf /tmp/portage " );
 }
