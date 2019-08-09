@@ -1,0 +1,332 @@
+#!/bin/bash
+# Authors: Sabayon Team 2019
+
+set -e
+
+# Accepted values: x86_64, armv7l
+export SAB_ARCH="${SAB_ARCH:-}"
+export DRY_RUN=${DRY_RUN:-0}
+export DEBUG="${DEBUG:-}"
+
+declare -a MANUALLY_REMOVED_LINKS
+declare -a BROKEN_LINKS2REMOVE
+
+log() {
+  local with_dashes=$1
+  shift || true
+
+  [ "$with_dashes" != 1 ] || \
+    echo "==============================================================="
+  echo "$@"
+  [ "$with_dashes" != 1 ] || \
+    echo "==============================================================="
+}
+
+summary() {
+
+  local msg="SAB_ARCH = ${SAB_ARCH}
+EXAMINED_LIBDIRS = ${EXAMINED_LIBDIRS}
+DRY_RUN = ${DRY_RUN}"
+
+  log 1 "$msg"
+}
+
+check_arch() {
+  if [ -z "${SAB_ARCH}" ] ; then
+    SAB_ARCH=$(uname -m)
+  fi
+
+  [[ "${SAB_ARCH}" != "x86_64" && "${SAB_ARCH}" != "armv7l" ]] && {
+    log 1 "Unsupported arch ${SAB_ARCH}."
+    exit 1
+  }
+
+  export SAB_ARCH
+}
+
+search_pkg() {
+  local basename=$1
+  # passed by reference
+  local -n p="$2"
+  local -n libdir="$3"
+  local lib="$4"
+
+  # Try to search for package
+  p=$(equery -N -q -C belongs $lib/$basename --early-out || true)
+
+  if [ -z "$p" ] ; then
+    if [ "$lib" = "/usr/lib64" ] ; then
+      # Try to search for file under /lib64
+      p=$(equery -N -q -C belongs /lib64/$basename --early-out || true)
+      libdir="/lib64"
+    fi
+    if [ "$lib" = "/usr/lib32" ] ; then
+      # Try to search for file under /lib32
+      p=$(equery -N -q -C belongs /lib32/$basename --early-out || true)
+      libdir="/lib32"
+    fi
+    if [ "$lib" = "/usr/lib" ] ; then
+      # Try to search for file under /lib
+      p=$(equery -N -q -C belongs /lib/$basename --early-out || true)
+      libdir="/lib"
+    fi
+
+  fi
+
+  if [ -z "$p" ] ; then
+    libdir=""
+  fi
+}
+
+detect_libs_dir() {
+  local libs=""
+  if [ "${SAB_ARCH}" = "x86_64" ] ; then
+    if [ -d "/usr/lib32" ] ; then
+      libs="/usr/lib32"
+    fi
+    if [ -d "/usr/lib64" ] ; then
+      libs="$libs /usr/lib64"
+    fi
+  else
+    if [ -d "/usr/lib" ] ; then
+      libs="/usr/lib"
+    fi
+  fi
+  if [ -z "$libs" ] ; then
+    log 0 "Error on detect libraries directories."
+    exit 1
+  fi
+
+  EXAMINED_LIBDIRS=$libs
+  export EXAMINED_LIBDIRS
+}
+
+examine_libs() {
+  local lib=""
+  local file=""
+  local broken_files=""
+
+  for lib in ${EXAMINED_LIBDIRS} ; do
+    broken_files=""
+
+    log 1 "Checking directory $lib..."
+
+    broken_files=$(find $lib -type l -xtype l -name *.so* 2>/dev/null)
+
+    [ -z "$DEBUG" ] || find $lib -type l -xtype l -name *.so*
+
+    for file in ${broken_files} ; do
+      examine_file "${file}" "${lib}"
+    done
+  done
+}
+
+examine_file() {
+  local f=$1
+  local res=""
+  local libdir=$2
+  local is_present_pkg=1
+  local pkg=""
+
+  [ -z "$DEBUG" ] || log 1 "Analyze file $f"
+
+  local base=$(basename $1)
+
+  local is_present_equery=1
+  local is_present_qlist=1
+  which equery 2>&1 >/dev/null || {
+    is_present_equery=0
+  }
+  which qlist 2>&1 >/dev/null || {
+    is_present_qlist=0
+  }
+  local targetlink=$(readlink $f)
+  local link2remove=false
+  local link2fix=false
+  local newlibdir=""
+  local tmp=""
+  local current_link=""
+
+  log 1 "Broken link $f => $targetlink"
+
+  # Check if file is without revision (es. libudev.so)
+  res=$(perl -e "if ('$base' =~ /(.so$)/) { print '1' }")
+  if [ -n "$res" ] ; then
+    # 
+    #echo "BASE = $base"
+
+    if [ $is_present_equery = 1 ] ; then
+
+      search_pkg "$base" pkg newlibdir "$lib"
+      if [ -z "$pkg" ] ; then
+        MANUALLY_REMOVED_LINKS+=( "$f" )
+        return
+      else
+
+        if [ -n "$newlibdir" ] ; then
+          log 0 "Link $base available under $newlibdir. I remove it."
+          link2remove=true
+        fi
+      fi
+
+      if [ "$is_present_qlist" = 1 ] ; then
+        # Check new 
+        res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+        if [ "$res" = 1 ] ; then
+          link2fix=true
+        fi
+      fi
+
+      if [ $link2remove = true ] ; then
+        BROKEN_LINKS2REMOVE+=( "$f" )
+      fi
+
+      log 0 "Link $f of the package $pkg"
+    fi
+
+  else
+
+    # Check if file has only one revision number (es. libudev.so.0)
+    res=$(perl -e "if ('$base' =~ /(.so[.][\d]+$)/) { print '1' }")
+    if [ -n "$res" ] ; then
+
+      if [ $is_present_equery = 1 ] ; then
+        search_pkg "$base" pkg newlibdir "$lib"
+        if [ -z "$pkg" ] ; then
+          # Try to search package with .so
+          base=$(echo "$base" | awk 'match($0, /.so/) { print substr($0, 0, RSTART+2) }')
+          search_pkg "$base" pkg newlibdir "$lib"
+          if [ -z "$pkg" ] ; then
+            log 0 "No package found for link $f."
+            MANUALLY_REMOVED_LINKS+=( "$f" )
+            return
+          fi
+
+          if [ -n "$newlibdir" ] ; then
+            log 0 "Link $base available under $newlibdir. I remove it."
+            link2remove=true
+          else
+            # POST: we have a broken link or old link
+
+            current_link=$(readlink $lib/$base)
+            log 0 "Link $f related to package $pkg (with an updated version $current_link). I remove it."
+            link2remove=true
+
+          fi
+
+        else
+
+          log 0 "Link $f of the package $pkg"
+
+          if [ -n "$newlibdir" ] ; then
+            log 0 "Link $base available under $newlibdir. I remove it."
+            link2remove=true
+          else
+
+            if [ "$is_present_qlist" = 1 ] ; then
+              # Check new 
+              res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+              if [ "$res" = 1 ] ; then
+                link2fix=true
+              fi
+            fi
+
+          fi
+
+        fi
+      fi
+
+      if [ $link2remove = true ] ; then
+        BROKEN_LINKS2REMOVE+=( "$f" )
+      fi
+
+    else
+      # Check if file has only one revision number (es. libudev.so.0.63)
+      res=$(perl -e "if ('$base' =~ /(.so[.][\d]+[.][\d]+$)/) { print '1' }")
+      if [ -n "$res" ] ; then
+
+        if [ $is_present_equery = 1 ] ; then
+          search_pkg "$base" pkg newlibdir "$lib"
+          if [ -z "$pkg" ] ; then
+
+            base=$(echo "$base" | awk 'match($0, /.so[.][0-9]+/) { print substr($0, 0, RSTART+RLENGTH-1) }')
+            search_pkg "$base" pkg newlibdir "$lib"
+            if [ -z "$pkg" ] ; then
+              log 0 "No package found for link $f."
+              MANUALLY_REMOVED_LINKS+=( "$f" )
+              return
+            fi
+
+            if [ -n "$newlibdir" ] ; then
+              log 0 "Link $base available under $newlibdir. I remove it."
+              link2remove=true
+            else
+
+              current_link=$(readlink $lib/$base)
+              log 0 "Link $f related to package $pkg (with an updated version $current_link). I remove it."
+              link2remove=true
+
+            fi
+
+          else
+
+            log 0 "Link $f of the package $pkg"
+
+            if [ -n "$newlibdir" ] ; then
+              log 0 "Link $base available under $newlibdir. I remove it."
+              link2remove=true
+            else
+
+              if [ "$is_present_qlist" = 1 ] ; then
+                # Check new 
+                res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+                if [ "$res" = 1 ] ; then
+                  link2fix=true
+                fi
+              fi
+
+            fi
+          fi
+
+        fi # $is_present_equery
+
+      else
+        echo "Link $f not supported".
+        MANUALLY_REMOVED_LINKS+=( "$f" )
+
+      fi
+
+    fi
+
+  fi
+}
+
+print_links2remove() {
+
+  echo $MANUALLY_REMOVED_LINKS
+
+}
+
+main() {
+
+  log 1 "sabayon-brokenlinks: Examine system broken links"
+  check_arch
+  detect_libs_dir
+  summary
+
+  if [[ "$(id -u)" != "0" && "${DRY_RUN}" != "1" ]]; then
+     echo "This script must be run as root" 1>&2
+     exit 1
+  fi
+
+  examine_libs
+
+  echo "=======+++++++++++++++++======="
+  echo $BROKEN_LINKS2REMOVE
+  echo "=======+++++++++++++++++======="
+
+  print_links2remove
+
+}
+
+main $@
