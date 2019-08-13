@@ -7,6 +7,7 @@ set -e
 export SAB_ARCH="${SAB_ARCH:-}"
 export DRY_RUN=${DRY_RUN:-0}
 export DEBUG="${DEBUG:-}"
+export FORCE_MANUAL="${FORCE_MANUAL:-0}"
 
 declare -a MANUALLY_REMOVED_LINKS
 declare -a BROKEN_LINKS2REMOVE
@@ -26,7 +27,8 @@ summary() {
 
   local msg="SAB_ARCH = ${SAB_ARCH}
 EXAMINED_LIBDIRS = ${EXAMINED_LIBDIRS}
-DRY_RUN = ${DRY_RUN}"
+DRY_RUN = ${DRY_RUN}
+FORCE_MANUAL= ${FORCE_MANUAL}"
 
   log 1 "$msg"
 }
@@ -82,21 +84,26 @@ search_pkg() {
 
 detect_libs_dir() {
   local libs=""
-  if [ "${SAB_ARCH}" = "x86_64" ] ; then
-    if [ -d "/usr/lib32" ] ; then
-      libs="/usr/lib32 /lib32"
-    fi
-    if [ -d "/usr/lib64" ] ; then
-      libs="$libs /usr/lib64 /lib64"
-    fi
+
+  if [ -n "$SCANDIR" ] ; then
+    libs=$SCANDIR
   else
-    if [ -d "/usr/lib" ] ; then
-      libs="/usr/lib /lib"
+    if [ "${SAB_ARCH}" = "x86_64" ] ; then
+      if [ -d "/usr/lib32" ] ; then
+        libs="/usr/lib32 /lib32"
+      fi
+      if [ -d "/usr/lib64" ] ; then
+        libs="$libs /usr/lib64 /lib64"
+      fi
+    else
+      if [ -d "/usr/lib" ] ; then
+        libs="/usr/lib /lib"
+      fi
     fi
-  fi
-  if [ -z "$libs" ] ; then
-    log 0 "Error on detect libraries directories."
-    exit 1
+    if [ -z "$libs" ] ; then
+      log 0 "Error on detect libraries directories."
+      exit 1
+    fi
   fi
 
   EXAMINED_LIBDIRS=$libs
@@ -163,16 +170,12 @@ examine_file() {
       fi
     fi
 
-    if [ "$is_present_qlist" = 1 ] ; then
-      # Check new 
-      res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
-      if [ "$res" = 1 ] ; then
-        link2fix=true
-      fi
-    fi
-
-    if [ $link2remove = true ] ; then
-      BROKEN_LINKS2REMOVE+=( "$f" )
+    res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+    if [ "$res" = 1 ] ; then
+      link2fix=true
+      echo "Link $f related to existing package. Try to reinstall $pkg."
+    else
+      MANUALLY_REMOVED_LINKS+=( "$f" )
     fi
 
     log 0 "Link $f of the package $pkg"
@@ -219,14 +222,13 @@ examine_file() {
           res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
           if [ "$res" = 1 ] ; then
             link2fix=true
+            echo "Link $f related to existing package. Try to reinstall $pkg."
+          else
+            MANUALLY_REMOVED_LINKS+=( "$f" )
           fi
 
         fi
 
-      fi
-
-      if [ $link2remove = true ] ; then
-        BROKEN_LINKS2REMOVE+=( "$f" )
       fi
 
     else
@@ -269,6 +271,9 @@ examine_file() {
             res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
             if [ "$res" = 1 ] ; then
               link2fix=true
+              echo "Link $f related to existing package. Try to reinstall $pkg."
+            else
+              MANUALLY_REMOVED_LINKS+=( "$f" )
             fi
 
           fi
@@ -284,6 +289,11 @@ examine_file() {
     fi
 
   fi
+
+  if [ $link2remove = true ] ; then
+    BROKEN_LINKS2REMOVE+=( "$f" )
+  fi
+
 }
 
 rm_broken_links() {
@@ -298,11 +308,87 @@ rm_broken_links() {
 
 print_links2remove() {
   for l in ${MANUALLY_REMOVED_LINKS[@]} ; do
+    if [ "$FORCE_MANUAL" = 1 ] ; then
+      if [ "$DRY_RUN" = 0 ] ; then
+        rm -vf ${l}
+      else
+        echo "force: rm -vf ${l}"
+      fi
+    else
       echo "rm -vf ${l}"
+    fi
   done
 }
 
+parse_args() {
+
+  help_message() {
+
+    echo "Sabayon Broken Links analyzer.
+Sabayon Team (2019)
+
+$0 [opts]
+
+Available options:
+
+-h|--help         This message.
+--dry-run         Dry run execution.
+--force-manual    Force remove of links to remove manually.
+--scandir         Define a specific directory to analyze
+-d|--debug        Enable debug stuff.
+
+Environment variables:
+DRY_RUN           To use instead of --dry-run option. Values: 0 or 1.
+DEBUG             Enable debug output.
+
+"
+
+  }
+
+  local short_opts="hd"
+  local long_opts="help dry-run force-manual debug scandir:"
+
+  $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@"))
+
+  while [ $# -gt 0 ] ; do
+    case "$1" in
+
+      -h|--help)
+        help_message
+        exit 1
+        ;;
+      -d|--debug)
+        DEBUG=1
+        ;;
+      --force-manual)
+        FORCE_MANUAL=1
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        ;;
+      --scandir)
+        SCANDIR="$2"
+        shift
+        ;;
+      --)
+        ;;
+      *)
+        echo "Invalid parameter $1."
+        exit 1
+        ;;
+
+    esac
+
+    shift
+
+  done
+
+  unset -f help_message
+}
+
 main() {
+
+  parse_args "$@"
 
   log 1 "sabayon-brokenlinks: Examine system broken links"
   check_arch
@@ -324,10 +410,15 @@ main() {
     exit 1
   }
 
+  parse_args
+  unset -f parse_args
+
   examine_libs
 
-  log 1 "Remove Broken Links!"
-  rm_broken_links
+  if [ ${#BROKEN_LINKS2REMOVE[@]} -gt 0 ] ; then
+    log 1 "Remove Broken Links!"
+    rm_broken_links
+  fi
 
   if [ ${#MANUALLY_REMOVED_LINKS[@]} -gt 0 ] ; then
     log 1 "Hereinafter, links to manually remove:"
@@ -335,7 +426,6 @@ main() {
   fi
 
   echo "All Done."
-
 }
 
 main $@
