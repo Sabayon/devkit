@@ -8,6 +8,7 @@ export SAB_ARCH="${SAB_ARCH:-}"
 export DRY_RUN=${DRY_RUN:-0}
 export DEBUG="${DEBUG:-}"
 export FORCE_MANUAL="${FORCE_MANUAL:-0}"
+export GENTOO_TOOL="${GENTOO_TOOL:-0}"
 
 declare -a MANUALLY_REMOVED_LINKS
 declare -a BROKEN_LINKS2REMOVE
@@ -28,6 +29,7 @@ summary() {
   local msg="SAB_ARCH = ${SAB_ARCH}
 EXAMINED_LIBDIRS = ${EXAMINED_LIBDIRS}
 DRY_RUN = ${DRY_RUN}
+GENTOO_TOOL = ${GENTOO_TOOL}
 FORCE_MANUAL= ${FORCE_MANUAL}"
 
   log 1 "$msg"
@@ -52,27 +54,31 @@ search_pkg() {
   local -n p="$2"
   local -n libdir="$3"
   local lib="$4"
-
-  # TODO: check if there is a more fast way instead of equery.
+  local l=""
+  local ll=""
 
   # Try to search for package
-  p=$(equery -N -q -C belongs $lib/$basename --early-out || true)
+  if [ "${GENTOO_TOOL}" = "1" ] ; then
+    p=$(equery -N -q -C belongs ${lib}/$basename --early-out || true)
+  else
+    p=$(equo q belongs ${lib}/${basename} -q || true)
+  fi
 
   if [ -z "$p" ] ; then
-    if [ "$lib" = "/usr/lib64" ] ; then
-      # Try to search for file under /lib64
-      p=$(equery -N -q -C belongs /lib64/$basename --early-out || true)
-      libdir="/lib64"
-    fi
-    if [ "$lib" = "/usr/lib32" ] ; then
-      # Try to search for file under /lib32
-      p=$(equery -N -q -C belongs /lib32/$basename --early-out || true)
-      libdir="/lib32"
-    fi
-    if [ "$lib" = "/usr/lib" ] ; then
-      # Try to search for file under /lib
-      p=$(equery -N -q -C belongs /lib/$basename --early-out || true)
-      libdir="/lib"
+
+    for l in "/usr/lib64" "/usr/lib32" "/usr/lib" ; do
+      if [ "$lib" = "$l" ] ; then
+        ll="${l/\/usr\///}"
+        break
+      fi
+    done
+
+    if [ -n "${ll}" ] ; then
+      if [ "${GENTOO_TOOL}" = "1" ] ; then
+        p=$(equery -N -q -C belongs ${ll}/$basename --early-out || true)
+      else
+        p=$(equo q belongs ${ll}/${basename} -q || true)
+      fi
     fi
 
   fi
@@ -170,7 +176,11 @@ examine_file() {
       fi
     fi
 
-    res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+    if [ "${GENTOO_TOOL}" = "1" ] ; then
+      res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+    else
+      res=$(equo q files  $pkg -q | grep $f | wc -l)
+    fi
     if [ "$res" = 1 ] ; then
       link2fix=true
       echo "Link $f related to existing package. Try to reinstall $pkg."
@@ -219,7 +229,11 @@ examine_file() {
         else
 
           # Check new 
-          res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+          if [ "${GENTOO_TOOL}" = "1" ] ; then
+            res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+          else
+            res=$(equo q files  $pkg -q | grep $f | wc -l)
+          fi
           if [ "$res" = 1 ] ; then
             link2fix=true
             echo "Link $f related to existing package. Try to reinstall $pkg."
@@ -268,7 +282,11 @@ examine_file() {
           else
 
             # Check new 
-            res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+            if [ "${GENTOO_TOOL}" = "1" ] ; then
+              res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+            else
+              res=$(equo q files  $pkg -q | grep $f | wc -l)
+            fi
             if [ "$res" = 1 ] ; then
               link2fix=true
               echo "Link $f related to existing package. Try to reinstall $pkg."
@@ -335,6 +353,7 @@ Available options:
 --dry-run         Dry run execution.
 --force-manual    Force remove of links to remove manually.
 --scandir         Define a specific directory to analyze
+--gentoo          Use gentoo tool instead of equo.
 -d|--debug        Enable debug stuff.
 
 Environment variables:
@@ -346,7 +365,7 @@ DEBUG             Enable debug output.
   }
 
   local short_opts="hd"
-  local long_opts="help dry-run force-manual debug scandir:"
+  local long_opts="help dry-run force-manual debug scandir: gentoo"
 
   $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@"))
 
@@ -400,18 +419,20 @@ main() {
      exit 1
   fi
 
-  which equery 2>&1 >/dev/null || {
-    echo "equery tool is needed. Please install app-portage/gentoolkit."
-    exit 1
-  }
-
-  which qlist 2>&1 >/dev/null || {
-    echo "qlist tool is needed. Please install app-portage/portage-utils."
-    exit 1
-  }
-
   parse_args
   unset -f parse_args
+
+  if [ "${GENTOO_TOOL}" = 1 ] ; then
+    which equery 2>&1 >/dev/null || {
+      echo "equery tool is needed. Please install app-portage/gentoolkit."
+      exit 1
+    }
+
+    which qlist 2>&1 >/dev/null || {
+      echo "qlist tool is needed. Please install app-portage/portage-utils."
+      exit 1
+    }
+  fi
 
   examine_libs
 
