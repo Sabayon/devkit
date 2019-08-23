@@ -127,10 +127,11 @@ examine_libs() {
     broken_files=""
 
     log 1 "Checking directory $lib..."
+    broken_files=$(find $lib -type l -and -xtype l -and -name *.so* -or -name *.a -and -type l -and -xtype l 2>/dev/null || true )
 
-    broken_files=$(find $lib -type l -xtype l -name *.so* 2>/dev/null)
-
-    [ -z "$DEBUG" ] || find $lib -type l -xtype l -name *.so*
+    [ -z "$DEBUG" ] || {
+      find $lib -type l -and -xtype l -and -name *.so* -or -name *.a -and -type l -and -xtype l || true
+    }
 
     for file in ${broken_files} ; do
       examine_file "${file}" "${lib}"
@@ -159,7 +160,7 @@ examine_file() {
   log 1 "Broken link $f => $targetlink"
 
   # Check if file is without revision (es. libudev.so)
-  res=$(perl -e "if ('$base' =~ /(.so$)/) { print '1' }")
+  res=$(perl -e "if ('$base' =~ /(.so|.a$)/) { print '1' }")
   if [ -n "$res" ] ; then
     # 
     #echo "BASE = $base"
