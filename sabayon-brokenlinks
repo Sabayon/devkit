@@ -8,7 +8,7 @@ export SAB_ARCH="${SAB_ARCH:-}"
 export DRY_RUN=${DRY_RUN:-0}
 export DEBUG="${DEBUG:-}"
 export FORCE_MANUAL="${FORCE_MANUAL:-0}"
-export GENTOO_TOOL="${GENTOO_TOOL:-0}"
+export USE_EQUO="${USE_EQUO:-1}"
 
 declare -a MANUALLY_REMOVED_LINKS
 declare -a BROKEN_LINKS2REMOVE
@@ -29,7 +29,7 @@ summary() {
   local msg="SAB_ARCH = ${SAB_ARCH}
 EXAMINED_LIBDIRS = ${EXAMINED_LIBDIRS}
 DRY_RUN = ${DRY_RUN}
-GENTOO_TOOL = ${GENTOO_TOOL}
+USE_EQUO = ${USE_EQUO}
 FORCE_MANUAL= ${FORCE_MANUAL}"
 
   log 1 "$msg"
@@ -58,7 +58,7 @@ search_pkg() {
   local ll=""
 
   # Try to search for package
-  if [ "${GENTOO_TOOL}" = "1" ] ; then
+  if [ "${USE_EQUO}" = "0" ] ; then
     p=$(equery -N -q -C belongs ${lib}/$basename --early-out || true)
   else
     p=$(equo q belongs ${lib}/${basename} -q || true)
@@ -74,7 +74,7 @@ search_pkg() {
     done
 
     if [ -n "${ll}" ] ; then
-      if [ "${GENTOO_TOOL}" = "1" ] ; then
+      if [ "${USE_EQUO}" = "0" ] ; then
         p=$(equery -N -q -C belongs ${ll}/$basename --early-out || true)
       else
         p=$(equo q belongs ${ll}/${basename} -q || true)
@@ -177,7 +177,7 @@ examine_file() {
       fi
     fi
 
-    if [ "${GENTOO_TOOL}" = "1" ] ; then
+    if [ "${USE_EQUO}" = "0" ] ; then
       res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
     else
       res=$(equo q files  $pkg -q | grep $f | wc -l)
@@ -230,7 +230,7 @@ examine_file() {
         else
 
           # Check new 
-          if [ "${GENTOO_TOOL}" = "1" ] ; then
+          if [ "${USE_EQUO}" = "0" ] ; then
             res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
           else
             res=$(equo q files  $pkg -q | grep $f | wc -l)
@@ -283,7 +283,7 @@ examine_file() {
           else
 
             # Check new 
-            if [ "${GENTOO_TOOL}" = "1" ] ; then
+            if [ "${USE_EQUO}" = "0" ] ; then
               res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
             else
               res=$(equo q files  $pkg -q | grep $f | wc -l)
@@ -360,6 +360,8 @@ Available options:
 Environment variables:
 DRY_RUN           To use instead of --dry-run option. Values: 0 or 1.
 DEBUG             Enable debug output.
+USE_EQUO          To use instead of --gentoo option.
+FORCE_MANUAL      To use instead of --force-manual.
 
 "
 
@@ -389,6 +391,9 @@ DEBUG             Enable debug output.
       --scandir)
         SCANDIR="$2"
         shift
+        ;;
+      --gentoo)
+        USE_EQUO=0
         ;;
       --)
         ;;
@@ -423,7 +428,7 @@ main() {
   parse_args
   unset -f parse_args
 
-  if [ "${GENTOO_TOOL}" = 1 ] ; then
+  if [ "${USE_EQUO}" = "0" ] ; then
     which equery 2>&1 >/dev/null || {
       echo "equery tool is needed. Please install app-portage/gentoolkit."
       exit 1
