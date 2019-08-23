@@ -443,7 +443,11 @@ main() {
   fi
 
   if [ ${#MANUALLY_REMOVED_LINKS[@]} -gt 0 ] ; then
-    log 1 "Hereinafter, links to manually remove:"
+    if [ "${FORCE_MANUAL}" = 1 ] ; then
+      log 1 "Hereinafter, links removed with force:"
+    else
+      log 1 "Hereinafter, links to manually remove:"
+    fi
     print_links2remove
   fi
 
