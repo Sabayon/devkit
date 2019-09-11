@@ -1,0 +1,462 @@
+#!/bin/bash
+# Authors: Sabayon Team 2019
+
+set -e
+
+# Accepted values: x86_64, armv7l
+export SAB_ARCH="${SAB_ARCH:-}"
+export DRY_RUN=${DRY_RUN:-0}
+export DEBUG="${DEBUG:-}"
+export FORCE="${FORCE:-0}"
+export USE_EQUO="${USE_EQUO:-1}"
+
+declare -a MANUALLY_REMOVED_LINKS
+declare -a BROKEN_LINKS2REMOVE
+
+log() {
+  local with_dashes=$1
+  shift || true
+
+  [ "$with_dashes" != 1 ] || \
+    echo "==============================================================="
+  echo "$@"
+  [ "$with_dashes" != 1 ] || \
+    echo "==============================================================="
+}
+
+summary() {
+
+  local msg="SAB_ARCH = ${SAB_ARCH}
+EXAMINED_LIBDIRS = ${EXAMINED_LIBDIRS}
+DRY_RUN = ${DRY_RUN}
+USE_EQUO = ${USE_EQUO}
+FORCE = ${FORCE}"
+
+  log 1 "$msg"
+}
+
+check_arch() {
+  if [ -z "${SAB_ARCH}" ] ; then
+    SAB_ARCH=$(uname -m)
+  fi
+
+  [[ "${SAB_ARCH}" != "x86_64" && "${SAB_ARCH}" != "armv7l" ]] && {
+    log 1 "Unsupported arch ${SAB_ARCH}."
+    exit 1
+  }
+
+  export SAB_ARCH
+}
+
+search_pkg() {
+  local basename=$1
+  # passed by reference
+  local -n p="$2"
+  local -n libdir="$3"
+  local lib="$4"
+  local l=""
+  local ll=""
+
+  # Try to search for package
+  if [ "${USE_EQUO}" = "0" ] ; then
+    p=$(equery -N -q -C belongs ${lib}/$basename --early-out || true)
+  else
+    p=$(equo q belongs ${lib}/${basename} -q || true)
+  fi
+
+  if [ -z "$p" ] ; then
+
+    for l in "/usr/lib64" "/usr/lib32" "/usr/lib" ; do
+      if [ "$lib" = "$l" ] ; then
+        ll="${l/\/usr\///}"
+        break
+      fi
+    done
+
+    if [ -n "${ll}" ] ; then
+      if [ "${USE_EQUO}" = "0" ] ; then
+        p=$(equery -N -q -C belongs ${ll}/$basename --early-out || true)
+      else
+        p=$(equo q belongs ${ll}/${basename} -q || true)
+      fi
+    fi
+
+  fi
+
+  if [ -z "$p" ] ; then
+    libdir=""
+  fi
+}
+
+detect_libs_dir() {
+  local libs=""
+
+  if [ -n "$SCANDIR" ] ; then
+    libs=$SCANDIR
+  else
+    if [ "${SAB_ARCH}" = "x86_64" ] ; then
+      if [ -d "/usr/lib32" ] ; then
+        libs="/usr/lib32 /lib32"
+      fi
+      if [ -d "/usr/lib64" ] ; then
+        libs="$libs /usr/lib64 /lib64"
+      fi
+    else
+      if [ -d "/usr/lib" ] ; then
+        libs="/usr/lib /lib"
+      fi
+    fi
+    if [ -z "$libs" ] ; then
+      log 0 "Error on detect libraries directories."
+      exit 1
+    fi
+  fi
+
+  EXAMINED_LIBDIRS=$libs
+  export EXAMINED_LIBDIRS
+}
+
+examine_libs() {
+  local lib=""
+  local file=""
+  local broken_files=""
+
+  log 1 "The exam could be long sorry for the wait."
+
+  for lib in ${EXAMINED_LIBDIRS} ; do
+    broken_files=""
+
+    log 1 "Checking directory $lib..."
+    broken_files=$(find $lib -type l -and -xtype l -and -name *.so* -or -name *.a -and -type l -and -xtype l 2>/dev/null || true )
+
+    [ -z "$DEBUG" ] || {
+      find $lib -type l -and -xtype l -and -name *.so* -or -name *.a -and -type l -and -xtype l || true
+    }
+
+    for file in ${broken_files} ; do
+      examine_file "${file}" "${lib}"
+    done
+  done
+}
+
+examine_file() {
+  local f=$1
+  local res=""
+  local libdir=$2
+  local is_present_pkg=1
+  local pkg=""
+
+  [ -z "$DEBUG" ] || log 1 "Analyze file $f"
+
+  local base=$(basename $1)
+
+  local targetlink=$(readlink $f)
+  local link2remove=false
+  local link2fix=false
+  local newlibdir=""
+  local tmp=""
+  local current_link=""
+
+  log 1 "Broken link $f => $targetlink"
+
+  # Check if file is without revision (es. libudev.so)
+  res=$(perl -e "if ('$base' =~ /(.so|.a$)/) { print '1' }")
+  if [ -n "$res" ] ; then
+    # 
+    #echo "BASE = $base"
+
+    search_pkg "$base" pkg newlibdir "$lib"
+    if [ -z "$pkg" ] ; then
+      MANUALLY_REMOVED_LINKS+=( "$f" )
+      return
+    else
+
+      if [ -n "$newlibdir" ] ; then
+        log 0 "Link $base available under $newlibdir. I remove it."
+        link2remove=true
+      fi
+    fi
+
+    if [ "${USE_EQUO}" = "0" ] ; then
+      res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+    else
+      res=$(equo q files  $pkg -q | grep $f | wc -l)
+    fi
+    if [ "$res" = 1 ] ; then
+      link2fix=true
+      echo "Link $f related to existing package. Try to reinstall $pkg."
+    else
+      MANUALLY_REMOVED_LINKS+=( "$f" )
+    fi
+
+    log 0 "Link $f of the package $pkg"
+
+  else
+
+    # Check if file has only one revision number (es. libudev.so.0)
+    res=$(perl -e "if ('$base' =~ /(.so[.][\d]+$)/) { print '1' }")
+    if [ -n "$res" ] ; then
+
+      search_pkg "$base" pkg newlibdir "$lib"
+      if [ -z "$pkg" ] ; then
+        # Try to search package with .so
+        base=$(echo "$base" | awk 'match($0, /.so/) { print substr($0, 0, RSTART+2) }')
+        search_pkg "$base" pkg newlibdir "$lib"
+        if [ -z "$pkg" ] ; then
+          log 0 "No package found for link $f."
+          MANUALLY_REMOVED_LINKS+=( "$f" )
+          return
+        fi
+
+        if [ -n "$newlibdir" ] ; then
+          log 0 "Link $base available under $newlibdir. I remove it."
+          link2remove=true
+        else
+          # POST: we have a broken link or old link
+
+          current_link=$(readlink $lib/$base)
+          log 0 "Link $f related to package $pkg (with an updated version $current_link). I remove it."
+          link2remove=true
+
+        fi
+
+      else
+
+        log 0 "Link $f of the package $pkg"
+
+        if [ -n "$newlibdir" ] ; then
+          log 0 "Link $base available under $newlibdir. I remove it."
+          link2remove=true
+        else
+
+          # Check new 
+          if [ "${USE_EQUO}" = "0" ] ; then
+            res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+          else
+            res=$(equo q files  $pkg -q | grep $f | wc -l)
+          fi
+          if [ "$res" = 1 ] ; then
+            link2fix=true
+            echo "Link $f related to existing package. Try to reinstall $pkg."
+          else
+            MANUALLY_REMOVED_LINKS+=( "$f" )
+          fi
+
+        fi
+
+      fi
+
+    else
+      # Check if file has only one revision number (es. libudev.so.0.63)
+      res=$(perl -e "if ('$base' =~ /(.so[.][\d]+[.][\d]+$)/) { print '1' }")
+      if [ -n "$res" ] ; then
+
+        search_pkg "$base" pkg newlibdir "$lib"
+        if [ -z "$pkg" ] ; then
+
+          base=$(echo "$base" | awk 'match($0, /.so[.][0-9]+/) { print substr($0, 0, RSTART+RLENGTH-1) }')
+          search_pkg "$base" pkg newlibdir "$lib"
+          if [ -z "$pkg" ] ; then
+            log 0 "No package found for link $f."
+            MANUALLY_REMOVED_LINKS+=( "$f" )
+            return
+          fi
+
+          if [ -n "$newlibdir" ] ; then
+            log 0 "Link $base available under $newlibdir. I remove it."
+            link2remove=true
+          else
+
+            current_link=$(readlink $lib/$base)
+            log 0 "Link $f related to package $pkg (with an updated version $current_link). I remove it."
+            link2remove=true
+
+          fi
+
+        else
+
+          log 0 "Link $f of the package $pkg"
+
+          if [ -n "$newlibdir" ] ; then
+            log 0 "Link $base available under $newlibdir. I remove it."
+            link2remove=true
+          else
+
+            # Check new 
+            if [ "${USE_EQUO}" = "0" ] ; then
+              res=$(qlist -IC $pkg 2>/dev/null | grep $f | wc -l)
+            else
+              res=$(equo q files  $pkg -q | grep $f | wc -l)
+            fi
+            if [ "$res" = 1 ] ; then
+              link2fix=true
+              echo "Link $f related to existing package. Try to reinstall $pkg."
+            else
+              MANUALLY_REMOVED_LINKS+=( "$f" )
+            fi
+
+          fi
+
+        fi
+
+      else
+        echo "Link $f not supported".
+        MANUALLY_REMOVED_LINKS+=( "$f" )
+
+      fi
+
+    fi
+
+  fi
+
+  if [ $link2remove = true ] ; then
+    BROKEN_LINKS2REMOVE+=( "$f" )
+  fi
+
+}
+
+rm_broken_links() {
+  for l in ${BROKEN_LINKS2REMOVE[@]} ; do
+    if [ "$DRY_RUN" = 0 ]; then
+      rm -vf ${l}
+    else
+      echo "rm -vf ${l}"
+    fi
+  done
+}
+
+print_links2remove() {
+  for l in ${MANUALLY_REMOVED_LINKS[@]} ; do
+    if [ "$FORCE" = 1 ] ; then
+      if [ "$DRY_RUN" = 0 ] ; then
+        rm -vf ${l}
+      else
+        echo "force: rm -vf ${l}"
+      fi
+    else
+      echo "rm -vf ${l}"
+    fi
+  done
+}
+
+parse_args() {
+
+  help_message() {
+
+    echo "Sabayon Broken Links analyzer.
+Sabayon Team (2019)
+
+$0 [opts]
+
+Available options:
+
+-h|--help         This message.
+--dry-run         Dry run execution.
+--force           Force remove of the links to remove manually.
+--scandir         Define a specific directory to analyze
+--gentoo          Use gentoo tool instead of equo.
+-d|--debug        Enable debug stuff.
+
+Environment variables:
+DRY_RUN           To use instead of --dry-run option. Values: 0 or 1.
+DEBUG             Enable debug output.
+USE_EQUO          To use instead of --gentoo option.
+FORCE             To use instead of --force.
+
+"
+
+  }
+
+  local short_opts="hd"
+  local long_opts="help dry-run force debug scandir: gentoo"
+
+  $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@"))
+
+  while [ $# -gt 0 ] ; do
+    case "$1" in
+
+      -h|--help)
+        help_message
+        exit 1
+        ;;
+      -d|--debug)
+        DEBUG=1
+        ;;
+      --force)
+        FORCE=1
+        ;;
+      --dry-run)
+        DRY_RUN=1
+        ;;
+      --scandir)
+        SCANDIR="$2"
+        shift
+        ;;
+      --gentoo)
+        USE_EQUO=0
+        ;;
+      --)
+        ;;
+      *)
+        echo "Invalid parameter $1."
+        exit 1
+        ;;
+
+    esac
+
+    shift
+
+  done
+
+  unset -f help_message
+}
+
+main() {
+
+  parse_args "$@"
+
+  log 1 "sabayon-brokenlinks: Examine system broken links"
+  check_arch
+  detect_libs_dir
+  summary
+
+  if [[ "$(id -u)" != "0" && "${DRY_RUN}" != "1" ]]; then
+     echo "This script must be run as root" 1>&2
+     exit 1
+  fi
+
+  parse_args
+  unset -f parse_args
+
+  if [ "${USE_EQUO}" = "0" ] ; then
+    which equery 2>&1 >/dev/null || {
+      echo "equery tool is needed. Please install app-portage/gentoolkit."
+      exit 1
+    }
+
+    which qlist 2>&1 >/dev/null || {
+      echo "qlist tool is needed. Please install app-portage/portage-utils."
+      exit 1
+    }
+  fi
+
+  examine_libs
+
+  if [ ${#BROKEN_LINKS2REMOVE[@]} -gt 0 ] ; then
+    log 1 "Remove Broken Links!"
+    rm_broken_links
+  fi
+
+  if [ ${#MANUALLY_REMOVED_LINKS[@]} -gt 0 ] ; then
+    if [ "${FORCE}" = 1 ] ; then
+      log 1 "Hereinafter, links removed with force:"
+    else
+      log 1 "Hereinafter, links to manually remove:"
+    fi
+    print_links2remove
+  fi
+
+  echo "All Done."
+}
+
+main $@
