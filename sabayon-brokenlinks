@@ -7,7 +7,7 @@ set -e
 export SAB_ARCH="${SAB_ARCH:-}"
 export DRY_RUN=${DRY_RUN:-0}
 export DEBUG="${DEBUG:-}"
-export FORCE_MANUAL="${FORCE_MANUAL:-0}"
+export FORCE="${FORCE:-0}"
 export USE_EQUO="${USE_EQUO:-1}"
 
 declare -a MANUALLY_REMOVED_LINKS
@@ -30,7 +30,7 @@ summary() {
 EXAMINED_LIBDIRS = ${EXAMINED_LIBDIRS}
 DRY_RUN = ${DRY_RUN}
 USE_EQUO = ${USE_EQUO}
-FORCE_MANUAL= ${FORCE_MANUAL}"
+FORCE = ${FORCE}"
 
   log 1 "$msg"
 }
@@ -327,7 +327,7 @@ rm_broken_links() {
 
 print_links2remove() {
   for l in ${MANUALLY_REMOVED_LINKS[@]} ; do
-    if [ "$FORCE_MANUAL" = 1 ] ; then
+    if [ "$FORCE" = 1 ] ; then
       if [ "$DRY_RUN" = 0 ] ; then
         rm -vf ${l}
       else
@@ -352,7 +352,7 @@ Available options:
 
 -h|--help         This message.
 --dry-run         Dry run execution.
---force-manual    Force remove of links to remove manually.
+--force           Force remove of the links to remove manually.
 --scandir         Define a specific directory to analyze
 --gentoo          Use gentoo tool instead of equo.
 -d|--debug        Enable debug stuff.
@@ -361,14 +361,14 @@ Environment variables:
 DRY_RUN           To use instead of --dry-run option. Values: 0 or 1.
 DEBUG             Enable debug output.
 USE_EQUO          To use instead of --gentoo option.
-FORCE_MANUAL      To use instead of --force-manual.
+FORCE             To use instead of --force.
 
 "
 
   }
 
   local short_opts="hd"
-  local long_opts="help dry-run force-manual debug scandir: gentoo"
+  local long_opts="help dry-run force debug scandir: gentoo"
 
   $(set -- $(getopt -u -q -a -o "$short_opts" -l "$long_opts" -- "$@"))
 
@@ -382,8 +382,8 @@ FORCE_MANUAL      To use instead of --force-manual.
       -d|--debug)
         DEBUG=1
         ;;
-      --force-manual)
-        FORCE_MANUAL=1
+      --force)
+        FORCE=1
         ;;
       --dry-run)
         DRY_RUN=1
@@ -448,7 +448,7 @@ main() {
   fi
 
   if [ ${#MANUALLY_REMOVED_LINKS[@]} -gt 0 ] ; then
-    if [ "${FORCE_MANUAL}" = 1 ] ; then
+    if [ "${FORCE}" = 1 ] ; then
       log 1 "Hereinafter, links removed with force:"
     else
       log 1 "Hereinafter, links to manually remove:"
