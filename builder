@@ -232,57 +232,67 @@ sub sanitize_deps {
   my ($pkg, @dependencies) = @_;
   my $prev_key = undef;
 
-  for (@dependencies) {
-    chomp($_);
-    if (length($_) > 0) {
-      if ($_ =~ m/\[\s+\d\]/) {
-        my $pkgs = $revs{$prev_key};
-        push(@$pkgs, $_);
-      } else {
-        $prev_key = substr $_, 0, length($_)-1
-          unless substr($_, -1) cmp ":";
-        my ($pkg, $p, $v) = parse_package_str($prev_key);
-        $revs{$v} = [];
-        $prev_key = $v;
+  if ($dep_ignore_versions) {
+    for (@dependencies) {
+      chomp($_);
+      if (length($_) > 0) {
+        if ($_ =~ m/\[\s+\d\]/) {
+          my $pkgs = $revs{$prev_key};
+          push(@$pkgs, $_);
+        } else {
+          $prev_key = substr $_, 0, length($_)-1
+            unless substr($_, -1) cmp ":";
+          my ($pkg, $p, $v) = parse_package_str($prev_key);
+          $revs{$v} = [];
+          $prev_key = $v;
+        }
       }
     }
-  }
 
-  # revs dictionary contains as keys versions of the package
-  # and as values an array ref with list of dependencies + itself
-  # Ex:
-  # %revs = (
-  #   '1.8.5' => [
-  #      ' [  0]  dev-lang/spidermonkey-1.8.5-r9   ',
-  #      ' [  1]  dev-libs/nspr-4.22   ',
-  #      ' [  1]  sys-libs/readline-7.0_p5   ',
-  #      ' [  1]  dev-libs/jemalloc-3.6.0   ',
-  #      ' [  1]  dev-lang/python-2.7.16   ',
-  #      ' [  1]  app-arch/zip-3.0-r3   ',
-  #      ' [  1]  virtual/pkgconfig-1   ',
-  #      ' [  1]  app-portage/elt-patches-20170815   ',
-  #      ' [  1]  sys-devel/automake-1.16.1-r1   ',
-  #      ' [  1]  sys-devel/automake-1.15.1-r2   ',
-  #      ' [  1]  sys-devel/autoconf-2.13-r1   ',
-  #      ' [  1]  sys-devel/libtool-2.4.6-r3   '
-  #   ],
-  # )
+    # revs dictionary contains as keys versions of the package
+    # and as values an array ref with list of dependencies + itself
+    # Ex:
+    # %revs = (
+    #   '1.8.5' => [
+    #      ' [  0]  dev-lang/spidermonkey-1.8.5-r9   ',
+    #      ' [  1]  dev-libs/nspr-4.22   ',
+    #      ' [  1]  sys-libs/readline-7.0_p5   ',
+    #      ' [  1]  dev-libs/jemalloc-3.6.0   ',
+    #      ' [  1]  dev-lang/python-2.7.16   ',
+    #      ' [  1]  app-arch/zip-3.0-r3   ',
+    #      ' [  1]  virtual/pkgconfig-1   ',
+    #      ' [  1]  app-portage/elt-patches-20170815   ',
+    #      ' [  1]  sys-devel/automake-1.16.1-r1   ',
+    #      ' [  1]  sys-devel/automake-1.15.1-r2   ',
+    #      ' [  1]  sys-devel/autoconf-2.13-r1   ',
+    #      ' [  1]  sys-devel/libtool-2.4.6-r3   '
+    #   ],
+    # )
 
-  @versions = sort { version->parse( $a ) <=> version->parse( $b) } keys %revs;
+    @versions = sort { version->parse( $a ) <=> version->parse( $b) } keys %revs;
 
-  $ref = $revs{$versions[scalar(@versions)-1]};
+    $ref = $revs{$versions[scalar(@versions)-1]};
 
-  loud("For package $pkg use version $versions[scalar(@versions)-1]", "with deps: ", @$ref)
+    loud("For package $pkg use version $versions[scalar(@versions)-1]", "with deps: ", @$ref)
     if $verbose;
 
+    @dependencies = uniq(
+        map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ = simplify_package($_) if $dep_ignore_versions; $_ }
+        @$ref
+    );
+  } else {
+    # Merge all versions dependencies as previous implementation.
+    #
 # If an unversioned atom is given, equery returns results for all versions in the portage tree
 # leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
 # possible dependencies, which isn't perfectly accurate but should be good enough. For completely
 # accurate results, pass in a versioned atom.
-  @dependencies = uniq(
-      map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ = simplify_package($_) if $dep_ignore_versions; $_ }
-      @$ref
-  );
+    @dependencies = uniq(
+        map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ }
+        @dependencies
+    );
+
+  }
 
   return sort(@dependencies);
 }
