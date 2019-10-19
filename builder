@@ -20,7 +20,7 @@ use Getopt::Long;
 use v5.10;
 no feature "say";
 use Storable 'dclone';
-use version;
+use Sort::Versions;
 
 my $profile              = $ENV{BUILDER_PROFILE} // 16;
 my $jobs                 = $ENV{BUILDER_JOBS} // 1;
@@ -210,7 +210,7 @@ sub parse_package_str {
   # 1.1.1.1.1.1
   $version_regex .= "|[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[a-z]*";
   $p =~ m/[-]($version_regex)*$/;
-  $v = $&; $v = substr $v, 1;
+  $v = $&; $v = substr $v, 1 if length($v) > 1;
 
   $p =~ s/-[\d.]*$//g;
 
@@ -229,8 +229,10 @@ sub simplify_package {
 }
 
 sub sanitize_deps {
-  my ($pkg, @dependencies) = @_;
+  my ($pkg, $atom, $dref, $verion) = @_;
+  my @dependencies = @{ $dref };
   my $prev_key = undef;
+  my %revs = ();
 
   if ($dep_ignore_versions) {
     for (@dependencies) {
@@ -269,15 +271,27 @@ sub sanitize_deps {
     #   ],
     # )
 
-    @versions = sort { version->parse( $a ) <=> version->parse( $b) } keys %revs;
 
-    $ref = $revs{$versions[scalar(@versions)-1]};
+    $v = parse_package_version($pkg);
+    if (length($v) > 0 && defined %revs{$v}) {
+      $version = $v;
+    } else {
+      @versions = sort { &Sort::Versions::versioncmp($a,$b) } keys %revs;
+      $version = $versions[scalar(@versions)-1];
+    }
+    $ref = $revs{$version};
 
-    loud("For package $pkg use version $versions[scalar(@versions)-1]", "with deps: ", @$ref)
+    loud("For package $pkg use version $version with deps: ", @$ref)
     if $verbose;
 
     @dependencies = uniq(
-        map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ = simplify_package($_) if $dep_ignore_versions; $_ }
+        grep {$_}
+        map {
+          $_ =~ s/\[.*\]|\s//g;
+          $_ =~ s/[:]$//g; # drop : at the end
+          &abs_atom($_) if $atom;
+          $_
+        }
         @$ref
     );
   } else {
@@ -288,7 +302,14 @@ sub sanitize_deps {
 # possible dependencies, which isn't perfectly accurate but should be good enough. For completely
 # accurate results, pass in a versioned atom.
     @dependencies = uniq(
-        map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ }
+        sort
+        grep {$_}
+        map {
+          $_ =~ s/\[.*\]|\s//g;
+          $_ =~ s/[:]$//g; # drop : at the end
+          &abs_atom($_) if $atom;
+          $_
+        }
         @dependencies
     );
 
@@ -311,7 +332,7 @@ sub package_deps {
         chomp @dependencies;
 
         # Get dependencies only of major version
-        @dependencies = sanitize_deps($package, @dependencies);
+        @dependencies = sanitize_deps($package, $atom, \@dependencies);
         $package_dep_cache{$cache_key} = \@dependencies;
     }
 
