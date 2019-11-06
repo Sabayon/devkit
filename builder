@@ -191,7 +191,7 @@ sub parse_package_str {
   $regex .= '|_beta[\d]*$';
   $regex .= '|_pre[\d]*$';
   $regex .= '|_pre[\d]*[-]r[\d]$';
-  $regex .= '|_rc[\d]+$';
+  $regex .= '|_rc[\d]*$';
 
   # Drop extra version suffix for now.
   $p =~ s/($regex)//g;
