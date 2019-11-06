@@ -20,6 +20,7 @@ use Getopt::Long;
 use v5.10;
 no feature "say";
 use Storable 'dclone';
+use Sort::Versions;
 
 my $profile              = $ENV{BUILDER_PROFILE} // 16;
 my $jobs                 = $ENV{BUILDER_JOBS} // 1;
@@ -38,6 +39,7 @@ my $entropy_repository   = $ENV{ENTROPY_REPOSITORY}
     // "main";    # Can be weekly, main, testing
 my $artifacts_folder          = $ENV{ARTIFACTS_DIR};
 my $dep_scan_depth            = $ENV{DEPENDENCY_SCAN_DEPTH} // 2;
+my $dep_ignore_versions       = $ENV{DEPENDENCY_IGNORE_VERSIONS} // 0;
 my $skip_portage_sync         = $ENV{SKIP_PORTAGE_SYNC} // 0;
 my $emerge_split_install      = $ENV{EMERGE_SPLIT_INSTALL} // 0;
 my $webrsync                  = $ENV{WEBRSYNC} // 0;
@@ -176,6 +178,146 @@ auto-sync = yes' > /etc/portage/repos.conf/$reponame.conf
 # Input: package, depth, and atom. Package: sys-fs/foobarfs, Depth: 1 (depth of the package tree) , Atom: 1/0 (enable disable atom output)
 my %package_dep_cache;
 
+sub parse_package_str {
+  my ($pkg, $p, $cat, $v) = @_;
+  my @parts = split '/', $pkg;
+  $p = $parts[1];
+  $cat = $parts[0];
+
+  $regex = '[-]r[\d]$';
+  $regex .= '|_p[\d]+[-]r[\d]$';
+  $regex .= '|_p[\d]+$';
+  $regex .= '|_alpha[\d]*$';
+  $regex .= '|_beta[\d]*$';
+  $regex .= '|_pre[\d]*$';
+  $regex .= '|_pre[\d]*[-]r[\d]$';
+  $regex .= '|_rc[\d]*$';
+
+  # Drop extra version suffix for now.
+  $p =~ s/($regex)//g;
+
+  $v = $p;  # Version regex
+  # 1.1
+  $version_regex = "[0-9]+[.][0-9]+[a-z]*";
+  # 1
+  $version_regex .= "|[0-9]+[a-z]*";
+  # 1.1.1
+  $version_regex .= "|[0-9]+[.][0-9]+[.][0-9]+[a-z]*";
+  # 1.1.1.1
+  $version_regex .= "|[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[a-z]*";
+  # 1.1.1.1.1
+  $version_regex .= "|[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[a-z]*";
+  # 1.1.1.1.1.1
+  $version_regex .= "|[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[a-z]*";
+  $p =~ m/[-]($version_regex)*$/;
+  $v = $&; $v = substr $v, 1 if length($v) > 1;
+
+  $p =~ s/-[\d.]*$//g;
+
+  return $cat, $p, $v;
+}
+
+sub parse_package_version {
+  my ($cat, $p, $v) = parse_package_str(@_);
+  return $v;
+}
+
+sub simplify_package {
+  my ($cat, $p, $v) = parse_package_str(@_);
+  $ans = $cat . "/" . $p ;
+  return $ans;
+}
+
+sub sanitize_deps {
+  my ($pkg, $atom, $dref, $verion) = @_;
+  my @dependencies = @{ $dref };
+  my $prev_key = undef;
+  my %revs = ();
+
+  if ($dep_ignore_versions) {
+    for (@dependencies) {
+      chomp($_);
+      if (length($_) > 0) {
+        if ($_ =~ m/\[\s+\d\]/) {
+          my $pkgs = $revs{$prev_key};
+          push(@$pkgs, $_);
+        } else {
+          $prev_key = substr $_, 0, length($_)-1
+            unless substr($_, -1) cmp ":";
+          my ($pkg, $p, $v) = parse_package_str($prev_key);
+          $revs{$v} = [];
+          $prev_key = $v;
+        }
+      }
+    }
+
+    # revs dictionary contains as keys versions of the package
+    # and as values an array ref with list of dependencies + itself
+    # Ex:
+    # %revs = (
+    #   '1.8.5' => [
+    #      ' [  0]  dev-lang/spidermonkey-1.8.5-r9   ',
+    #      ' [  1]  dev-libs/nspr-4.22   ',
+    #      ' [  1]  sys-libs/readline-7.0_p5   ',
+    #      ' [  1]  dev-libs/jemalloc-3.6.0   ',
+    #      ' [  1]  dev-lang/python-2.7.16   ',
+    #      ' [  1]  app-arch/zip-3.0-r3   ',
+    #      ' [  1]  virtual/pkgconfig-1   ',
+    #      ' [  1]  app-portage/elt-patches-20170815   ',
+    #      ' [  1]  sys-devel/automake-1.16.1-r1   ',
+    #      ' [  1]  sys-devel/automake-1.15.1-r2   ',
+    #      ' [  1]  sys-devel/autoconf-2.13-r1   ',
+    #      ' [  1]  sys-devel/libtool-2.4.6-r3   '
+    #   ],
+    # )
+
+
+    $v = parse_package_version($pkg);
+    if (length($v) > 0 && defined %revs{$v}) {
+      $version = $v;
+    } else {
+      @versions = sort { &Sort::Versions::versioncmp($a,$b) } keys %revs;
+      $version = $versions[scalar(@versions)-1];
+    }
+    $ref = $revs{$version};
+
+    loud("For package $pkg use version $version with deps: ", @$ref)
+    if $verbose;
+
+    @dependencies = uniq(
+        grep {$_}
+        map {
+          $_ =~ s/\[.*\]|\s//g;
+          $_ =~ s/[:]$//g; # drop : at the end
+          &abs_atom($_) if $atom;
+          $_
+        }
+        @$ref
+    );
+  } else {
+    # Merge all versions dependencies as previous implementation.
+    #
+# If an unversioned atom is given, equery returns results for all versions in the portage tree
+# leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
+# possible dependencies, which isn't perfectly accurate but should be good enough. For completely
+# accurate results, pass in a versioned atom.
+    @dependencies = uniq(
+        sort
+        grep {$_}
+        map {
+          $_ =~ s/\[.*\]|\s//g;
+          $_ =~ s/[:]$//g; # drop : at the end
+          &abs_atom($_) if $atom;
+          $_
+        }
+        @dependencies
+    );
+
+  }
+
+  return sort(@dependencies);
+}
+
 sub package_deps {
     my $package = shift;
     my $depth   = shift // 1;   # defaults to 1 level of depthness of the tree
@@ -189,17 +331,8 @@ sub package_deps {
             qx/equery -C -q g --depth=$depth '$package'/;    #depth=0 it's all
         chomp @dependencies;
 
-# If an unversioned atom is given, equery returns results for all versions in the portage tree
-# leading to duplicates. The sanest thing to do is dedup the list. This gives the superset of all
-# possible dependencies, which isn't perfectly accurate but should be good enough. For completely
-# accurate results, pass in a versioned atom.
-        @dependencies = uniq(
-            sort
-                grep {$_}
-                map { $_ =~ s/\[.*\]|\s//g; &abs_atom($_) if $atom; $_ }
-                @dependencies
-        );
-
+        # Get dependencies only of major version
+        @dependencies = sanitize_deps($package, $atom, \@dependencies);
         $package_dep_cache{$cache_key} = \@dependencies;
     }
 
@@ -689,6 +822,9 @@ loud "Pre-compilation phase start";
 
 _system("emerge --info")
     ; #always give detailed information about the building environment, helpful to debug
+
+_system("equo repo list")
+    ; #always give list of repo installed to for reproduce conflicts install issues.
 
 if ( $emerge_remove and $emerge_remove ne "" ) {
     say "Removing with emerge: $emerge_remove";
