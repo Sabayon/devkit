@@ -101,6 +101,9 @@ detect_libs_dir() {
       if [ -d "/usr/lib64" ] ; then
         libs="$libs /usr/lib64 /lib64"
       fi
+      if [ -d "/usr/lib" ] ; then
+        libs="$libs /usr/lib /lib"
+      fi
     else
       if [ -d "/usr/lib" ] ; then
         libs="/usr/lib /lib"
